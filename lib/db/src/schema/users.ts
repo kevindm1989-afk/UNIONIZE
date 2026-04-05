@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -22,6 +22,16 @@ export const accessRequestsTable = pgTable("access_requests", {
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const rolePermissionsTable = pgTable(
+  "role_permissions",
+  {
+    role: text("role").notNull(),
+    permission: text("permission").notNull(),
+    granted: boolean("granted").notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.role, t.permission] })]
+);
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({
   id: true,

@@ -8,7 +8,7 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { seedAdminUser, ensureSessionTable } from "./lib/seedAdmin";
+import { seedAdminUser, ensureSessionTable, seedDefaultPermissions } from "./lib/seedAdmin";
 
 const PgStore = connectPgSimple(session);
 
@@ -60,9 +60,10 @@ app.use(
 // Auth routes are public
 app.use("/api", router);
 
-// Ensure sessions table exists, then seed admin user
+// Ensure sessions table exists, then seed admin and permissions
 ensureSessionTable()
   .then(() => seedAdminUser())
+  .then(() => seedDefaultPermissions())
   .catch((err) => logger.error({ err }, "Startup tasks failed"));
 
 if (process.env.NODE_ENV === "production") {

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, Users, FileText, Bell, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/App";
+import { useAuth, usePermissions } from "@/App";
 
 export function MobileLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { roleLabel, can } = usePermissions();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const getSection = () => {
@@ -20,9 +21,9 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
   const section = getSection();
 
   const getNewLink = () => {
-    if (section === "members") return "/members/new";
-    if (section === "grievances") return "/grievances/new";
-    if (section === "bulletins") return "/bulletins/new";
+    if (section === "members" && can("members.edit")) return "/members/new";
+    if (section === "grievances" && can("grievances.file")) return "/grievances/new";
+    if (section === "bulletins" && can("bulletins.post")) return "/bulletins/new";
     return null;
   };
 
@@ -64,11 +65,9 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   <div className="px-3 py-2.5 border-b border-border">
                     <p className="text-xs font-bold text-foreground">{user.displayName}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">@{user.username}</p>
-                    {user.role === "admin" && (
-                      <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                        Admin
-                      </span>
-                    )}
+                    <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                      {roleLabel(user.role)}
+                    </span>
                   </div>
                   {user.role === "admin" && (
                     <Link

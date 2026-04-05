@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import multer from "multer";
+import { requirePermission } from "../lib/permissions";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -50,7 +51,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
  * The client sends the file as multipart/form-data; the server writes it to the
  * configured backend and returns { objectPath, filename, contentType, fileSize }.
  */
-router.post("/storage/upload", upload.single("file"), async (req: Request, res: Response) => {
+router.post("/storage/upload", requirePermission("documents.upload"), upload.single("file"), async (req: Request, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: "No file provided" });
     return;

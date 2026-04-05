@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/App";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Phone, Mail, Building, Briefcase, Calendar,
@@ -42,6 +43,7 @@ export default function MemberDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
+  const { can } = usePermissions();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -160,16 +162,18 @@ export default function MemberDetail() {
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 gap-1.5 rounded-xl shrink-0"
-            onClick={() => setEditOpen(true)}
-            disabled={isLoading || !member}
-          >
-            <Pencil className="w-4 h-4" />
-            Edit
-          </Button>
+          {can("members.edit") && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-xl shrink-0"
+              onClick={() => setEditOpen(true)}
+              disabled={isLoading || !member}
+            >
+              <Pencil className="w-4 h-4" />
+              Edit
+            </Button>
+          )}
         </header>
 
         {/* Info card */}
@@ -267,7 +271,7 @@ export default function MemberDetail() {
         </section>
 
         {/* Danger zone — remove member */}
-        {member && (
+        {member && can("members.edit") && (
           <div className="pt-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>

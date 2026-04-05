@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, grievancesTable, membersTable } from "@workspace/db";
 import { eq, and, desc, sql, lt } from "drizzle-orm";
+import { requirePermission } from "../lib/permissions";
 import {
   CreateGrievanceBody,
   UpdateGrievanceBody,
@@ -74,7 +75,7 @@ router.get("/", async (req, res) => {
   res.json(withNames);
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("grievances.file"), async (req, res) => {
   const parsed = CreateGrievanceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
@@ -145,7 +146,7 @@ router.get("/:id", async (req, res) => {
   res.json(formatGrievance(grievance, memberName));
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePermission("grievances.file"), async (req, res) => {
   const paramParsed = UpdateGrievanceParams.safeParse({ id: Number(req.params.id) });
   if (!paramParsed.success) {
     res.status(400).json({ error: "Invalid ID" });
@@ -187,7 +188,7 @@ router.patch("/:id", async (req, res) => {
   res.json(formatGrievance(grievance, memberName));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("grievances.manage"), async (req, res) => {
   const parsed = DeleteGrievanceParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid ID" });

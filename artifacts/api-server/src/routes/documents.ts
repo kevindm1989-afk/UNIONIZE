@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, documentsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { requirePermission } from "../lib/permissions";
 
 const router = Router();
 
@@ -31,7 +32,7 @@ router.get("/", async (_req, res) => {
   res.json(docs.map(formatDocument));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("documents.upload"), async (req, res) => {
   const { title, description, filename, objectPath, contentType, fileSize, isCurrent, effectiveDate, expirationDate, notes } = req.body;
 
   if (!title || !filename || !objectPath || !contentType) {
@@ -71,7 +72,7 @@ router.get("/:id", async (req, res) => {
   res.json(formatDocument(doc));
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePermission("documents.upload"), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
@@ -89,7 +90,7 @@ router.patch("/:id", async (req, res) => {
   res.json(formatDocument(doc));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("documents.upload"), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(documentsTable).where(eq(documentsTable.id, id));

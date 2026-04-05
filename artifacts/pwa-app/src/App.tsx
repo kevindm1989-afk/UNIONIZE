@@ -24,6 +24,7 @@ export interface AuthUser {
   username: string;
   displayName: string;
   role: string;
+  permissions: string[];
 }
 
 interface AuthContextValue {
@@ -38,6 +39,21 @@ export const AuthContext = createContext<AuthContextValue>({
 
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+export function usePermissions() {
+  const { user } = useAuth();
+  const can = (permission: string): boolean => {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    return user.permissions.includes(permission);
+  };
+  const roleLabel = (role: string) => {
+    if (role === "admin") return "Chair";
+    if (role === "co_chair") return "Co-Chair";
+    return "Steward";
+  };
+  return { can, role: user?.role ?? "", roleLabel };
 }
 
 const queryClient = new QueryClient({

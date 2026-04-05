@@ -7,6 +7,7 @@ import dashboardRouter from "./dashboard";
 import storageRouter from "./storage";
 import documentsRouter from "./documents";
 import authRouter from "./auth";
+import { requirePermission } from "../lib/permissions";
 
 const router: IRouter = Router();
 
@@ -23,11 +24,11 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 router.use(requireAuth);
 
-router.use("/members", membersRouter);
-router.use("/grievances", grievancesRouter);
-router.use("/announcements", announcementsRouter);
+router.use("/members", requirePermission("members.view"), membersRouter);
+router.use("/grievances", requirePermission("grievances.view"), grievancesRouter);
+router.use("/announcements", requirePermission("bulletins.view"), announcementsRouter);
 router.use("/dashboard", dashboardRouter);
-router.use(storageRouter);
-router.use("/documents", documentsRouter);
+router.use(requirePermission("documents.view"), storageRouter);
+router.use("/documents", requirePermission("documents.view"), documentsRouter);
 
 export default router;

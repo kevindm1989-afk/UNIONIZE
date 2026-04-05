@@ -1,7 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, accessRequestsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, accessRequestsTable, rolePermissionsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { ALL_PERMISSIONS, loadUserPermissions } from "../lib/seedAdmin";
 
 const router: IRouter = Router();
 
@@ -11,6 +12,7 @@ declare module "express-session" {
     username: string;
     displayName: string;
     role: string;
+    permissions: string[];
   }
 }
 
@@ -43,10 +45,13 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       return;
     }
 
+    const permissions = await loadUserPermissions(user.role);
+
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.displayName = user.displayName;
     req.session.role = user.role;
+    req.session.permissions = permissions;
 
     req.session.save((err) => {
       if (err) {
@@ -59,6 +64,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
         username: user.username,
         displayName: user.displayName,
         role: user.role,
+        permissions,
       });
     });
   } catch (err) {
@@ -90,6 +96,7 @@ router.get("/auth/me", (req: Request, res: Response) => {
     username: req.session.username,
     displayName: req.session.displayName,
     role: req.session.role,
+    permissions: req.session.permissions ?? [],
   });
 });
 
@@ -285,7 +292,7 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
   const { isActive, role, password, displayName } = req.body ?? {};
   const updates: Record<string, any> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
-  if (role === "admin" || role === "steward") updates.role = role;
+  if (role === "admin" || role === "co_chair" || role === "steward") updates.role = role;
   if (displayName) updates.displayName = String(displayName).trim();
   if (password) updates.passwordHash = await bcrypt.hash(String(password), 12);
   if (Object.keys(updates).length === 0) {
@@ -308,6 +315,54 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
     return;
   }
   res.json(updated);
+});
+
+/**
+ * GET /auth/roles/permissions — chair/admin only: get permissions for all configurable roles
+ */
+router.get("/auth/roles/permissions", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const rows = await db.select().from(rolePermissionsTable);
+  const result: Record<string, Record<string, boolean>> = {};
+  for (const row of rows) {
+    if (!result[row.role]) result[row.role] = {};
+    result[row.role][row.permission] = row.granted;
+  }
+  res.json({ allPermissions: ALL_PERMISSIONS, rolePermissions: result });
+});
+
+/**
+ * PATCH /auth/roles/permissions — chair/admin only: update a single permission for a role
+ */
+router.patch("/auth/roles/permissions", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const { role, permission, granted } = req.body ?? {};
+  if (!role || !permission || typeof granted !== "boolean") {
+    res.status(400).json({ error: "role, permission, and granted (boolean) are required" });
+    return;
+  }
+  if (!["co_chair", "steward"].includes(role)) {
+    res.status(400).json({ error: "Can only modify co_chair or steward permissions" });
+    return;
+  }
+  if (!(ALL_PERMISSIONS as readonly string[]).includes(permission)) {
+    res.status(400).json({ error: "Unknown permission" });
+    return;
+  }
+  await db
+    .insert(rolePermissionsTable)
+    .values({ role, permission, granted })
+    .onConflictDoUpdate({
+      target: [rolePermissionsTable.role, rolePermissionsTable.permission],
+      set: { granted },
+    });
+  res.json({ ok: true });
 });
 
 export default router;

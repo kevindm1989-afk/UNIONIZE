@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mobile PWA for union stewards to manage member records, track grievances, and post bulletins. Built as a pnpm monorepo with a React + Vite frontend and Express API server backed by PostgreSQL.
+Mobile PWA for Union Local 1285 stewards to manage member records, track grievances, post bulletins, and access CBA documents. Built as a pnpm monorepo with a React + Vite frontend and Express API server backed by PostgreSQL. Full RBAC system with role-configurable permissions.
 
 ## Stack
 

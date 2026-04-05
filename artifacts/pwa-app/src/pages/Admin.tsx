@@ -12,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
   ChevronLeft, Users, ClipboardList, CheckCircle, XCircle,
-  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy,
+  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-type Tab = "requests" | "users";
+type Tab = "requests" | "users" | "roles";
 
 interface AccessRequest {
   id: number;
@@ -94,7 +94,7 @@ export default function Admin() {
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState<"steward" | "admin">("steward");
+  const [newRole, setNewRole] = useState<"steward" | "co_chair" | "admin">("steward");
   const [showNewPass, setShowNewPass] = useState(false);
   const [createdCred, setCreatedCred] = useState<{ username: string; password: string } | null>(null);
 
@@ -149,6 +149,41 @@ export default function Admin() {
     if (!newName.trim() || !newUsername.trim() || !newPassword.trim()) return;
     createUser.mutate({ displayName: newName, username: newUsername, password: newPassword, role: newRole });
   };
+
+  // ── Role Permissions ────────────────────────────────────────────────────────
+  const { data: rolesData, isLoading: loadingRoles } = useQuery<{
+    allPermissions: string[];
+    rolePermissions: Record<string, Record<string, boolean>>;
+  }>({
+    queryKey: ["/auth/roles/permissions"],
+    queryFn: () => fetchJson("/api/auth/roles/permissions"),
+  });
+
+  const togglePermission = useMutation({
+    mutationFn: (vars: { role: string; permission: string; granted: boolean }) =>
+      fetchJson("/api/auth/roles/permissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/auth/roles/permissions"] }),
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const PERMISSION_LABELS: Record<string, { label: string; desc: string }> = {
+    "members.view":       { label: "View Members",        desc: "Browse and search member records" },
+    "members.edit":       { label: "Edit Members",        desc: "Add, edit, and remove member records" },
+    "grievances.view":    { label: "View Grievances",     desc: "View filed grievances and their status" },
+    "grievances.file":    { label: "File Grievances",     desc: "File new grievances and update existing ones" },
+    "grievances.manage":  { label: "Manage Grievances",   desc: "Delete grievances and override steps" },
+    "bulletins.view":     { label: "View Bulletins",      desc: "Read posted bulletins and announcements" },
+    "bulletins.post":     { label: "Post Bulletins",      desc: "Create new bulletins and announcements" },
+    "bulletins.manage":   { label: "Manage Bulletins",    desc: "Edit and delete any bulletin" },
+    "documents.view":     { label: "View Documents",      desc: "Access and download CBA documents" },
+    "documents.upload":   { label: "Upload Documents",    desc: "Upload, edit, and delete CBA documents" },
+  };
+
+  const ROLE_LABELS: Record<string, string> = { co_chair: "Co-Chair", steward: "Steward" };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -217,8 +252,9 @@ export default function Admin() {
         {/* Tabs */}
         <div className="flex gap-2 p-1 bg-muted rounded-xl">
           {([
-            { id: "requests" as Tab, label: "Access Requests", icon: ClipboardList, count: requests.length },
+            { id: "requests" as Tab, label: "Requests", icon: ClipboardList, count: requests.length },
             { id: "users" as Tab, label: "Stewards", icon: Users, count: null },
+            { id: "roles" as Tab, label: "Roles", icon: Settings, count: null },
           ]).map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
@@ -335,11 +371,9 @@ export default function Admin() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="font-bold text-sm text-foreground truncate">{u.displayName}</p>
-                        {u.role === "admin" && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                            Admin
-                          </span>
-                        )}
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                          {u.role === "admin" ? "Chair" : u.role === "co_chair" ? "Co-Chair" : "Steward"}
+                        </span>
                         <span
                           className={cn(
                             "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full",
@@ -387,6 +421,58 @@ export default function Admin() {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {/* Roles Tab */}
+        {tab === "roles" && (
+          <section className="space-y-4 pb-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Control what each role can see and do in the app. The Chair always has full access.
+            </p>
+
+            {loadingRoles ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : rolesData ? (
+              (["co_chair", "steward"] as const).map((roleKey) => (
+                <div key={roleKey} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border bg-muted/30">
+                    <p className="font-extrabold text-sm tracking-tight">{ROLE_LABELS[roleKey]}</p>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {rolesData.allPermissions.map((perm) => {
+                      const granted = rolesData.rolePermissions[roleKey]?.[perm] ?? false;
+                      const meta = PERMISSION_LABELS[perm];
+                      return (
+                        <div key={perm} className="px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground leading-tight">{meta?.label ?? perm}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{meta?.desc}</p>
+                          </div>
+                          <button
+                            onClick={() => togglePermission.mutate({ role: roleKey, permission: perm, granted: !granted })}
+                            disabled={togglePermission.isPending}
+                            className={cn(
+                              "relative w-11 h-6 rounded-full transition-colors shrink-0",
+                              granted ? "bg-primary" : "bg-muted-foreground/30"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
+                                granted && "translate-x-5"
+                              )}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            ) : null}
           </section>
         )}
       </div>
@@ -478,18 +564,22 @@ export default function Admin() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Role</label>
               <div className="flex gap-2">
-                {(["steward", "admin"] as const).map((r) => (
+                {([
+                  { value: "steward", label: "Steward" },
+                  { value: "co_chair", label: "Co-Chair" },
+                  { value: "admin", label: "Chair" },
+                ] as const).map(({ value, label }) => (
                   <button
-                    key={r}
-                    onClick={() => setNewRole(r)}
+                    key={value}
+                    onClick={() => setNewRole(value)}
                     className={cn(
-                      "flex-1 h-11 rounded-xl text-sm font-bold border transition-all capitalize",
-                      newRole === r
+                      "flex-1 h-11 rounded-xl text-sm font-bold border transition-all",
+                      newRole === value
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-card border-border text-muted-foreground"
                     )}
                   >
-                    {r}
+                    {label}
                   </button>
                 ))}
               </div>

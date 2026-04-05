@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, announcementsTable } from "@workspace/db";
+import { requirePermission } from "../lib/permissions";
 import { eq, desc } from "drizzle-orm";
 import {
   CreateAnnouncementBody,
@@ -29,7 +30,7 @@ router.get("/", async (req, res) => {
   res.json(announcements.map(formatAnnouncement));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("bulletins.post"), async (req, res) => {
   const parsed = CreateAnnouncementBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
@@ -70,7 +71,7 @@ router.get("/:id", async (req, res) => {
   res.json(formatAnnouncement(announcement));
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePermission("bulletins.manage"), async (req, res) => {
   const paramParsed = UpdateAnnouncementParams.safeParse({ id: Number(req.params.id) });
   if (!paramParsed.success) {
     res.status(400).json({ error: "Invalid ID" });
@@ -104,7 +105,7 @@ router.patch("/:id", async (req, res) => {
   res.json(formatAnnouncement(announcement));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("bulletins.manage"), async (req, res) => {
   const parsed = DeleteAnnouncementParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid ID" });

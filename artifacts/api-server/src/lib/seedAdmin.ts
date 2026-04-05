@@ -1,11 +1,36 @@
 import bcrypt from "bcryptjs";
-import { db, usersTable, pool } from "@workspace/db";
+import { db, usersTable, rolePermissionsTable, pool } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "Local1285!";
 const ADMIN_DISPLAY_NAME = process.env.ADMIN_DISPLAY_NAME ?? "Administrator";
+
+export const ALL_PERMISSIONS = [
+  "members.view",
+  "members.edit",
+  "grievances.view",
+  "grievances.file",
+  "grievances.manage",
+  "bulletins.view",
+  "bulletins.post",
+  "bulletins.manage",
+  "documents.view",
+  "documents.upload",
+] as const;
+
+export type Permission = (typeof ALL_PERMISSIONS)[number];
+
+const STEWARD_DEFAULT: Permission[] = [
+  "members.view",
+  "members.edit",
+  "grievances.view",
+  "grievances.file",
+  "bulletins.view",
+  "bulletins.post",
+  "documents.view",
+];
 
 export async function ensureSessionTable(): Promise<void> {
   const client = await pool.connect();
@@ -53,5 +78,43 @@ export async function seedAdminUser(): Promise<void> {
   } catch (err) {
     logger.error({ err }, "seedAdminUser failed");
     throw err;
+  }
+}
+
+export async function seedDefaultPermissions(): Promise<void> {
+  try {
+    const coChairRows = ALL_PERMISSIONS.map((p) => ({
+      role: "co_chair",
+      permission: p,
+      granted: true,
+    }));
+    const stewardRows = ALL_PERMISSIONS.map((p) => ({
+      role: "steward",
+      permission: p,
+      granted: STEWARD_DEFAULT.includes(p as Permission),
+    }));
+
+    for (const row of [...coChairRows, ...stewardRows]) {
+      await db.insert(rolePermissionsTable).values(row).onConflictDoNothing();
+    }
+
+    logger.info("Default role permissions seeded");
+  } catch (err) {
+    logger.error({ err }, "seedDefaultPermissions failed");
+  }
+}
+
+export async function loadUserPermissions(role: string): Promise<string[]> {
+  if (role === "admin") return [...ALL_PERMISSIONS];
+
+  try {
+    const rows = await db
+      .select({ permission: rolePermissionsTable.permission, granted: rolePermissionsTable.granted })
+      .from(rolePermissionsTable)
+      .where(eq(rolePermissionsTable.role, role));
+
+    return rows.filter((r) => r.granted).map((r) => r.permission);
+  } catch {
+    return [];
   }
 }

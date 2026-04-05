@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FileText, Upload, Trash2, ExternalLink, CheckCircle2, Loader2, Star } from "lucide-react";
+import { usePermissions } from "@/App";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,7 @@ export default function Documents() {
   const deleteDocument = useDeleteDocument();
   const updateDocument = useUpdateDocument();
 
+  const { can } = usePermissions();
   const invalidateDocs = () => queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
 
   const resetSheet = () => {
@@ -187,13 +189,15 @@ export default function Documents() {
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">CBA Documents</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Collective Bargaining Agreements</p>
           </div>
-          <Button
-            size="sm"
-            className="rounded-xl h-10 gap-1.5 font-bold text-xs uppercase tracking-wider shrink-0"
-            onClick={() => { setSheetOpen(true); resetSheet(); }}
-          >
-            <Upload className="w-4 h-4" /> Upload
-          </Button>
+          {can("documents.upload") && (
+            <Button
+              size="sm"
+              className="rounded-xl h-10 gap-1.5 font-bold text-xs uppercase tracking-wider shrink-0"
+              onClick={() => { setSheetOpen(true); resetSheet(); }}
+            >
+              <Upload className="w-4 h-4" /> Upload
+            </Button>
+          )}
         </header>
 
         {isLoading ? (
@@ -206,9 +210,11 @@ export default function Documents() {
             <FileText className="w-14 h-14 mx-auto text-muted-foreground opacity-20 mb-4" />
             <p className="font-semibold text-muted-foreground">No CBA uploaded yet</p>
             <p className="text-sm text-muted-foreground mt-1 mb-5">Upload the contract to give stewards quick access.</p>
-            <Button onClick={() => { setSheetOpen(true); resetSheet(); }} className="rounded-xl gap-2">
-              <Upload className="w-4 h-4" /> Upload CBA
-            </Button>
+            {can("documents.upload") && (
+              <Button onClick={() => { setSheetOpen(true); resetSheet(); }} className="rounded-xl gap-2">
+                <Upload className="w-4 h-4" /> Upload CBA
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-5">
@@ -239,7 +245,7 @@ export default function Documents() {
                       <Button size="sm" className="rounded-lg h-9 gap-1.5 text-xs" onClick={() => handleOpenDocument(currentDoc)}>
                         <ExternalLink className="w-3.5 h-3.5" /> Open
                       </Button>
-                      <AlertDialog>
+                      {can("documents.upload") && <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg text-destructive hover:bg-destructive/10">
                             <Trash2 className="w-4 h-4" />
@@ -255,7 +261,7 @@ export default function Documents() {
                             <AlertDialogAction onClick={() => handleDelete(currentDoc.id)} className="bg-destructive w-full">Delete</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
-                      </AlertDialog>
+                      </AlertDialog>}
                     </div>
                   </div>
                 </div>
@@ -275,13 +281,15 @@ export default function Documents() {
                         )}
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-primary" title="Set as current" onClick={() => handleSetCurrent(doc.id)}>
-                          <Star className="w-4 h-4" />
-                        </Button>
+                        {can("documents.upload") && (
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-primary" title="Set as current" onClick={() => handleSetCurrent(doc.id)}>
+                            <Star className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg" onClick={() => handleOpenDocument(doc)}>
                           <ExternalLink className="w-4 h-4" />
                         </Button>
-                        <AlertDialog>
+                        {can("documents.upload") && <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg text-destructive hover:bg-destructive/10">
                               <Trash2 className="w-4 h-4" />
@@ -297,7 +305,7 @@ export default function Documents() {
                               <AlertDialogAction onClick={() => handleDelete(doc.id)} className="bg-destructive w-full">Delete</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
-                        </AlertDialog>
+                        </AlertDialog>}
                       </div>
                     </div>
                   </div>
