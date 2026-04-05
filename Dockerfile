@@ -18,6 +18,11 @@ COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
 COPY scripts/package.json ./scripts/
 
 RUN pnpm install --frozen-lockfile
+RUN npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm add -D \
+    @rollup/rollup-linux-x64-musl \
+    lightningcss-linux-x64-musl \
+    @tailwindcss/oxide-linux-x64-musl \
+    --ignore-workspace-root-check
 
 # Copy all source code
 COPY . .
