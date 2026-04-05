@@ -23,6 +23,20 @@ jobs:
       - name: Set up flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Provision Tigris storage (first run only)
+        run: |
+          # Create Tigris bucket if BUCKET_NAME secret is not already set on the app.
+          # `fly storage create` is idempotent-safe; it exits 0 if a bucket is already linked.
+          SECRETS=$(flyctl secrets list 2>/dev/null || echo "")
+          if ! echo "$SECRETS" | grep -q "BUCKET_NAME"; then
+            echo "No Tigris bucket found — provisioning..."
+            flyctl storage create --name union-local-1285-cba --yes || true
+          else
+            echo "Tigris bucket already linked, skipping."
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy to Fly.io
         run: flyctl deploy --remote-only
         env:

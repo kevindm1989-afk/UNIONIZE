@@ -5,9 +5,8 @@ import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
-import { randomUUID } from "crypto";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { storageUpload, storageDownload } from "../lib/storageAdapter";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -16,9 +15,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Legacy presigned-URL flow (Replit/GCS only). Kept for compatibility.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
@@ -49,9 +46,9 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 /**
  * POST /storage/upload
  *
- * Server-side file upload — receives the file from the browser via multipart
- * and writes it directly to GCS, avoiding any GCS CORS restrictions.
- * Returns { objectPath, filename, contentType, fileSize }.
+ * Server-side multipart upload. Works on both Replit (GCS) and Fly.io (S3/Tigris).
+ * The client sends the file as multipart/form-data; the server writes it to the
+ * configured backend and returns { objectPath, filename, contentType, fileSize }.
  */
 router.post("/storage/upload", upload.single("file"), async (req: Request, res: Response) => {
   if (!req.file) {
@@ -60,24 +57,9 @@ router.post("/storage/upload", upload.single("file"), async (req: Request, res: 
   }
 
   try {
-    const privateObjectDir = objectStorageService.getPrivateObjectDir();
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-
-    const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
-    const bucketName = parts[0];
-    const objectName = parts.slice(1).join("/");
-
-    const bucket = objectStorageClient.bucket(bucketName);
-    const gcsFile = bucket.file(objectName);
-
-    await gcsFile.save(req.file.buffer, {
-      contentType: req.file.mimetype || "application/octet-stream",
-      resumable: false,
-    });
-
-    const objectPath = objectStorageService.normalizeObjectEntityPath(
-      `https://storage.googleapis.com/${bucketName}/${objectName}`
+    const { objectPath } = await storageUpload(
+      req.file.buffer,
+      req.file.mimetype || "application/octet-stream"
     );
 
     res.json({
@@ -95,9 +77,7 @@ router.post("/storage/upload", upload.single("file"), async (req: Request, res: 
 /**
  * GET /storage/public-objects/*
  *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
+ * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS (Replit/GCS only).
  */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
@@ -129,46 +109,23 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * Serve uploaded object entities. Works on both Replit (GCS) and Fly.io (S3/Tigris).
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
+    const { stream, contentType, contentLength } = await storageDownload(objectPath);
 
-    const response = await objectStorageService.downloadObject(objectFile);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    if (contentLength) res.setHeader("Content-Length", String(contentLength));
 
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    (stream as NodeJS.ReadableStream).pipe(res);
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      req.log.warn({ err: error }, "Object not found");
+    if (error instanceof ObjectNotFoundError || (error as Error).message === "Object not found") {
       res.status(404).json({ error: "Object not found" });
       return;
     }
