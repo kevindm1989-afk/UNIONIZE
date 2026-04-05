@@ -1,14 +1,17 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import multer from "multer";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
+import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 /**
  * POST /storage/uploads/request-url
@@ -40,6 +43,52 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+/**
+ * POST /storage/upload
+ *
+ * Server-side file upload — receives the file from the browser via multipart
+ * and writes it directly to GCS, avoiding any GCS CORS restrictions.
+ * Returns { objectPath, filename, contentType, fileSize }.
+ */
+router.post("/storage/upload", upload.single("file"), async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(400).json({ error: "No file provided" });
+    return;
+  }
+
+  try {
+    const privateObjectDir = objectStorageService.getPrivateObjectDir();
+    const objectId = randomUUID();
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+
+    const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
+    const bucketName = parts[0];
+    const objectName = parts.slice(1).join("/");
+
+    const bucket = objectStorageClient.bucket(bucketName);
+    const gcsFile = bucket.file(objectName);
+
+    await gcsFile.save(req.file.buffer, {
+      contentType: req.file.mimetype || "application/octet-stream",
+      resumable: false,
+    });
+
+    const objectPath = objectStorageService.normalizeObjectEntityPath(
+      `https://storage.googleapis.com/${bucketName}/${objectName}`
+    );
+
+    res.json({
+      objectPath,
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+      fileSize: req.file.size,
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error uploading file to storage");
+    res.status(500).json({ error: "Failed to upload file" });
   }
 });
 

@@ -7,7 +7,6 @@ import {
   useUpdateDocument,
   getListDocumentsQueryKey,
 } from "@workspace/api-client-react";
-import { useUpload } from "@workspace/object-storage-web";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,46 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function uploadFileToServer(
+  file: File,
+  onProgress: (pct: number) => void
+): Promise<{ objectPath: string; filename: string; contentType: string; fileSize: number }> {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/storage/upload");
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 90));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error("Invalid server response"));
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.error || `Upload failed (${xhr.status})`));
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out"));
+    xhr.timeout = 120_000;
+
+    xhr.send(formData);
+  });
+}
+
 export default function Documents() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +79,7 @@ export default function Documents() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
 
   const { data: documents, isLoading } = useListDocuments({
@@ -49,7 +89,6 @@ export default function Documents() {
   const createDocument = useCreateDocument();
   const deleteDocument = useDeleteDocument();
   const updateDocument = useUpdateDocument();
-  const { uploadFile, progress } = useUpload({ basePath: "/api/storage" });
 
   const invalidateDocs = () => queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
 
@@ -60,6 +99,7 @@ export default function Documents() {
     setDescription("");
     setEffectiveDate("");
     setUploadError(null);
+    setUploadProgress(0);
     setStatusText("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -68,20 +108,24 @@ export default function Documents() {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
-    if (!title) setTitle(file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
+    setTitle((prev) => prev || file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
     setUploadStep("file-selected");
+    setUploadError(null);
   };
 
   const handleUploadAndSave = async () => {
     if (!selectedFile || !title.trim()) return;
     setUploadStep("working");
     setUploadError(null);
+    setUploadProgress(0);
     setStatusText("Uploading file...");
 
     try {
-      const result = await uploadFile(selectedFile);
-      if (!result) throw new Error("Upload failed — please try again.");
+      const result = await uploadFileToServer(selectedFile, (pct) => {
+        setUploadProgress(pct);
+      });
 
+      setUploadProgress(95);
       setStatusText("Saving document record...");
 
       await new Promise<void>((resolve, reject) => {
@@ -90,29 +134,24 @@ export default function Documents() {
             data: {
               title: title.trim(),
               description: description.trim() || null,
-              filename: selectedFile.name,
+              filename: result.filename,
               objectPath: result.objectPath,
-              contentType: selectedFile.type || "application/pdf",
-              fileSize: formatFileSize(selectedFile.size),
+              contentType: result.contentType,
+              fileSize: formatFileSize(result.fileSize),
               isCurrent: true,
               effectiveDate: effectiveDate || null,
             },
           },
           {
-            onSuccess: () => {
-              invalidateDocs();
-              resolve();
-            },
+            onSuccess: () => { invalidateDocs(); resolve(); },
             onError: (err) => reject(err),
           }
         );
       });
 
+      setUploadProgress(100);
       setUploadStep("done");
-      setTimeout(() => {
-        setSheetOpen(false);
-        resetSheet();
-      }, 1500);
+      setTimeout(() => { setSheetOpen(false); resetSheet(); }, 1500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed. Please try again.";
       setUploadError(msg);
@@ -197,11 +236,7 @@ export default function Documents() {
                       </p>
                     </div>
                     <div className="flex flex-col gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        className="rounded-lg h-9 gap-1.5 text-xs"
-                        onClick={() => handleOpenDocument(currentDoc)}
-                      >
+                      <Button size="sm" className="rounded-lg h-9 gap-1.5 text-xs" onClick={() => handleOpenDocument(currentDoc)}>
                         <ExternalLink className="w-3.5 h-3.5" /> Open
                       </Button>
                       <AlertDialog>
@@ -273,8 +308,14 @@ export default function Documents() {
         )}
       </div>
 
-      {/* Upload Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open && uploadStep !== "working") { resetSheet(); } setSheetOpen(open && uploadStep !== "working" ? open : sheetOpen); }}>
+      <Sheet
+        open={sheetOpen}
+        onOpenChange={(open) => {
+          if (!open && uploadStep === "working") return;
+          setSheetOpen(open);
+          if (!open) resetSheet();
+        }}
+      >
         <SheetContent side="bottom" className="h-auto max-h-[92dvh] rounded-t-2xl overflow-y-auto">
           <SheetHeader className="mb-5">
             <SheetTitle className="text-lg font-extrabold tracking-tight">Upload CBA Document</SheetTitle>
@@ -287,24 +328,26 @@ export default function Documents() {
               <p className="text-sm text-muted-foreground mt-1">Your CBA is now available for stewards.</p>
             </div>
           ) : uploadStep === "working" ? (
-            <div className="py-8 space-y-5 text-center">
+            <div className="py-8 space-y-5 text-center pb-8">
               <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
               <p className="text-sm font-medium text-muted-foreground">{statusText}</p>
-              {progress > 0 && progress < 100 && (
+              {uploadProgress > 0 && (
                 <div className="mx-4">
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${progress}%` }} />
+                    <div
+                      className="h-full bg-primary transition-all duration-300 rounded-full"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{progress}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">{uploadProgress}%</p>
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-4 pb-8">
-              {/* File picker */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-                  File
+                  File (PDF or Word document)
                 </label>
                 <input
                   ref={fileInputRef}
