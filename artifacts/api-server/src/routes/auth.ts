@@ -292,7 +292,7 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
   const { isActive, role, password, displayName } = req.body ?? {};
   const updates: Record<string, any> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
-  if (role === "admin" || role === "co_chair" || role === "steward") updates.role = role;
+  if (role === "admin" || role === "steward") updates.role = role;
   if (displayName) updates.displayName = String(displayName).trim();
   if (password) updates.passwordHash = await bcrypt.hash(String(password), 12);
   if (Object.keys(updates).length === 0) {
@@ -347,8 +347,8 @@ router.patch("/auth/roles/permissions", async (req: Request, res: Response) => {
     res.status(400).json({ error: "role, permission, and granted (boolean) are required" });
     return;
   }
-  if (!["co_chair", "steward"].includes(role)) {
-    res.status(400).json({ error: "Can only modify co_chair or steward permissions" });
+  if (role !== "steward") {
+    res.status(400).json({ error: "Can only modify steward permissions" });
     return;
   }
   if (!(ALL_PERMISSIONS as readonly string[]).includes(permission)) {
