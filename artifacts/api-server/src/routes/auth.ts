@@ -143,7 +143,7 @@ router.post("/auth/request-access", async (req: Request, res: Response) => {
  * GET /auth/access-requests — admin only: list pending requests
  */
 router.get("/auth/access-requests", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -158,7 +158,7 @@ router.get("/auth/access-requests", async (req: Request, res: Response) => {
  * POST /auth/access-requests/:id/approve — admin only: approve and create user account
  */
 router.post("/auth/access-requests/:id/approve", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -206,7 +206,7 @@ router.post("/auth/access-requests/:id/approve", async (req: Request, res: Respo
  * DELETE /auth/access-requests/:id — admin only: deny/remove a request
  */
 router.delete("/auth/access-requests/:id", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -219,7 +219,7 @@ router.delete("/auth/access-requests/:id", async (req: Request, res: Response) =
  * GET /auth/users — admin only: list all users
  */
 router.get("/auth/users", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -241,7 +241,7 @@ router.get("/auth/users", async (req: Request, res: Response) => {
  * POST /auth/users — admin only: create a new user manually
  */
 router.post("/auth/users", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -258,7 +258,7 @@ router.post("/auth/users", async (req: Request, res: Response) => {
         username: String(username).toLowerCase().trim(),
         displayName: String(displayName).trim(),
         passwordHash,
-        role: role === "admin" ? "admin" : "steward",
+        role: role === "admin" ? "admin" : role === "chair" ? "chair" : "steward",
         isActive: true,
       })
       .returning({
@@ -284,7 +284,7 @@ router.post("/auth/users", async (req: Request, res: Response) => {
  * PATCH /auth/users/:id — admin only: update user (toggle active, change role, reset password)
  */
 router.patch("/auth/users/:id", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -292,7 +292,7 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
   const { isActive, role, password, displayName } = req.body ?? {};
   const updates: Record<string, any> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
-  if (role === "admin" || role === "steward") updates.role = role;
+  if (role === "admin" || role === "chair" || role === "steward") updates.role = role;
   if (displayName) updates.displayName = String(displayName).trim();
   if (password) updates.passwordHash = await bcrypt.hash(String(password), 12);
   if (Object.keys(updates).length === 0) {
@@ -321,7 +321,7 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
  * GET /auth/roles/permissions — chair/admin only: get permissions for all configurable roles
  */
 router.get("/auth/roles/permissions", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -338,7 +338,7 @@ router.get("/auth/roles/permissions", async (req: Request, res: Response) => {
  * PATCH /auth/roles/permissions — chair/admin only: update a single permission for a role
  */
 router.patch("/auth/roles/permissions", async (req: Request, res: Response) => {
-  if (req.session.role !== "admin") {
+  if (!["admin", "chair"].includes(req.session.role)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -347,8 +347,8 @@ router.patch("/auth/roles/permissions", async (req: Request, res: Response) => {
     res.status(400).json({ error: "role, permission, and granted (boolean) are required" });
     return;
   }
-  if (role !== "steward") {
-    res.status(400).json({ error: "Can only modify steward permissions" });
+  if (!["chair", "steward"].includes(role)) {
+    res.status(400).json({ error: "Can only modify chair or steward permissions" });
     return;
   }
   if (!(ALL_PERMISSIONS as readonly string[]).includes(permission)) {

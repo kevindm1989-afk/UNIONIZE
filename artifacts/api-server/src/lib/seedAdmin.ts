@@ -83,13 +83,18 @@ export async function seedAdminUser(): Promise<void> {
 
 export async function seedDefaultPermissions(): Promise<void> {
   try {
+    const chairRows = ALL_PERMISSIONS.map((p) => ({
+      role: "chair",
+      permission: p,
+      granted: true,
+    }));
     const stewardRows = ALL_PERMISSIONS.map((p) => ({
       role: "steward",
       permission: p,
       granted: STEWARD_DEFAULT.includes(p as Permission),
     }));
 
-    for (const row of stewardRows) {
+    for (const row of [...chairRows, ...stewardRows]) {
       await db.insert(rolePermissionsTable).values(row).onConflictDoNothing();
     }
 

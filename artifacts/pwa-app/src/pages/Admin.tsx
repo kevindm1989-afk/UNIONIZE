@@ -94,7 +94,7 @@ export default function Admin() {
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState<"steward" | "admin">("steward");
+  const [newRole, setNewRole] = useState<"steward" | "chair" | "admin">("steward");
   const [showNewPass, setShowNewPass] = useState(false);
   const [createdCred, setCreatedCred] = useState<{ username: string; password: string } | null>(null);
 
@@ -183,7 +183,7 @@ export default function Admin() {
     "documents.upload":   { label: "Upload Documents",    desc: "Upload, edit, and delete CBA documents" },
   };
 
-  const ROLE_LABELS: Record<string, string> = { steward: "Steward" };
+  const ROLE_LABELS: Record<string, string> = { chair: "Chair", steward: "Steward" };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -372,7 +372,7 @@ export default function Admin() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="font-bold text-sm text-foreground truncate">{u.displayName}</p>
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                          {u.role === "admin" ? "Chair" : "Steward"}
+                          {u.role === "admin" ? "Admin" : u.role === "chair" ? "Chair" : "Steward"}
                         </span>
                         <span
                           className={cn(
@@ -436,7 +436,7 @@ export default function Admin() {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : rolesData ? (
-              (["steward"] as const).map((roleKey) => (
+              (["chair", "steward"] as const).map((roleKey) => (
                 <div key={roleKey} className="bg-card border border-border rounded-xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-border bg-muted/30">
                     <p className="font-extrabold text-sm tracking-tight">{ROLE_LABELS[roleKey]}</p>
@@ -566,7 +566,7 @@ export default function Admin() {
               <div className="flex gap-2">
                 {([
                   { value: "steward", label: "Steward" },
-                  { value: "admin", label: "Chair" },
+                  { value: "chair", label: "Chair" },
                 ] as const).map(({ value, label }) => (
                   <button
                     key={value}

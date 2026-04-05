@@ -69,7 +69,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                       {roleLabel(user.role)}
                     </span>
                   </div>
-                  {user.role === "admin" && (
+                  {(user.role === "admin" || user.role === "chair") && (
                     <Link
                       href="/admin"
                       onClick={() => setShowUserMenu(false)}

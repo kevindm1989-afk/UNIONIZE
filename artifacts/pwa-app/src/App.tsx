@@ -49,7 +49,8 @@ export function usePermissions() {
     return user.permissions.includes(permission);
   };
   const roleLabel = (role: string) => {
-    if (role === "admin") return "Chair";
+    if (role === "admin") return "Admin";
+    if (role === "chair") return "Chair";
     return "Steward";
   };
   return { can, role: user?.role ?? "", roleLabel };
