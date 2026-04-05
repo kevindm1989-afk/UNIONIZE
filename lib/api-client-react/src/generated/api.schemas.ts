@@ -212,6 +212,56 @@ export interface RecentActivity {
   recentAnnouncements: Announcement[];
 }
 
+export interface Document {
+  id: number;
+  title: string;
+  description?: string | null;
+  filename: string;
+  objectPath: string;
+  contentType: string;
+  fileSize?: string | null;
+  isCurrent: boolean;
+  effectiveDate?: string | null;
+  expirationDate?: string | null;
+  notes?: string | null;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDocumentBody {
+  title: string;
+  description?: string | null;
+  filename: string;
+  objectPath: string;
+  contentType: string;
+  fileSize?: string | null;
+  isCurrent?: boolean;
+  effectiveDate?: string | null;
+  expirationDate?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateDocumentBody {
+  title?: string;
+  description?: string | null;
+  isCurrent?: boolean;
+  effectiveDate?: string | null;
+  expirationDate?: string | null;
+  notes?: string | null;
+}
+
+export interface RequestUploadUrlBody {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface RequestUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
 export type ListMembersParams = {
   department?: string;
   classification?: string;

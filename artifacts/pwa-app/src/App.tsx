@@ -14,6 +14,7 @@ import GrievanceDetail from "@/pages/GrievanceDetail";
 import Bulletins from "@/pages/Bulletins";
 import BulletinCreate from "@/pages/BulletinCreate";
 import BulletinDetail from "@/pages/BulletinDetail";
+import Documents from "@/pages/Documents";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,8 @@ function Router() {
       <Route path="/bulletins" component={Bulletins} />
       <Route path="/bulletins/new" component={BulletinCreate} />
       <Route path="/bulletins/:id" component={BulletinDetail} />
+
+      <Route path="/documents" component={Documents} />
       
       <Route component={NotFound} />
     </Switch>

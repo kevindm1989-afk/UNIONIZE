@@ -484,3 +484,118 @@ export const GetRecentActivityResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Request a presigned upload URL
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary List all CBA documents
+ */
+export const ListDocumentsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  filename: zod.string(),
+  objectPath: zod.string(),
+  contentType: zod.string(),
+  fileSize: zod.string().nullish(),
+  isCurrent: zod.boolean(),
+  effectiveDate: zod.string().nullish(),
+  expirationDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  uploadedAt: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem);
+
+/**
+ * @summary Save document metadata after upload
+ */
+export const CreateDocumentBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  filename: zod.string(),
+  objectPath: zod.string(),
+  contentType: zod.string(),
+  fileSize: zod.string().nullish(),
+  isCurrent: zod.boolean().optional(),
+  effectiveDate: zod.string().nullish(),
+  expirationDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a document by ID
+ */
+export const GetDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetDocumentResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  filename: zod.string(),
+  objectPath: zod.string(),
+  contentType: zod.string(),
+  fileSize: zod.string().nullish(),
+  isCurrent: zod.boolean(),
+  effectiveDate: zod.string().nullish(),
+  expirationDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  uploadedAt: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update document metadata
+ */
+export const UpdateDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDocumentBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  isCurrent: zod.boolean().optional(),
+  effectiveDate: zod.string().nullish(),
+  expirationDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateDocumentResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  filename: zod.string(),
+  objectPath: zod.string(),
+  contentType: zod.string(),
+  fileSize: zod.string().nullish(),
+  isCurrent: zod.boolean(),
+  effectiveDate: zod.string().nullish(),
+  expirationDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  uploadedAt: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a document
+ */
+export const DeleteDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
