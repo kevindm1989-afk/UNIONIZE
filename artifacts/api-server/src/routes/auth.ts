@@ -147,4 +147,167 @@ router.get("/auth/access-requests", async (req: Request, res: Response) => {
   res.json(requests);
 });
 
+/**
+ * POST /auth/access-requests/:id/approve — admin only: approve and create user account
+ */
+router.post("/auth/access-requests/:id/approve", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const id = Number(req.params.id);
+  try {
+    const [request] = await db
+      .select()
+      .from(accessRequestsTable)
+      .where(eq(accessRequestsTable.id, id))
+      .limit(1);
+    if (!request) {
+      res.status(404).json({ error: "Request not found" });
+      return;
+    }
+
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    const tempPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    const [newUser] = await db
+      .insert(usersTable)
+      .values({
+        username: request.username,
+        displayName: request.name,
+        passwordHash,
+        role: "steward",
+        isActive: true,
+      })
+      .returning({ id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName });
+
+    await db.delete(accessRequestsTable).where(eq(accessRequestsTable.id, id));
+
+    res.json({ user: newUser, tempPassword });
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A user with that username already exists" });
+    } else {
+      req.log.error({ err }, "Approve request error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+/**
+ * DELETE /auth/access-requests/:id — admin only: deny/remove a request
+ */
+router.delete("/auth/access-requests/:id", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const id = Number(req.params.id);
+  await db.delete(accessRequestsTable).where(eq(accessRequestsTable.id, id));
+  res.json({ ok: true });
+});
+
+/**
+ * GET /auth/users — admin only: list all users
+ */
+router.get("/auth/users", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const users = await db
+    .select({
+      id: usersTable.id,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .orderBy(usersTable.createdAt);
+  res.json(users);
+});
+
+/**
+ * POST /auth/users — admin only: create a new user manually
+ */
+router.post("/auth/users", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const { username, displayName, role, password } = req.body ?? {};
+  if (!username || !displayName || !password) {
+    res.status(400).json({ error: "username, displayName, and password are required" });
+    return;
+  }
+  try {
+    const passwordHash = await bcrypt.hash(String(password), 12);
+    const [newUser] = await db
+      .insert(usersTable)
+      .values({
+        username: String(username).toLowerCase().trim(),
+        displayName: String(displayName).trim(),
+        passwordHash,
+        role: role === "admin" ? "admin" : "steward",
+        isActive: true,
+      })
+      .returning({
+        id: usersTable.id,
+        username: usersTable.username,
+        displayName: usersTable.displayName,
+        role: usersTable.role,
+        isActive: usersTable.isActive,
+        createdAt: usersTable.createdAt,
+      });
+    res.status(201).json(newUser);
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "Username already exists" });
+    } else {
+      req.log.error({ err }, "Create user error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+/**
+ * PATCH /auth/users/:id — admin only: update user (toggle active, change role, reset password)
+ */
+router.patch("/auth/users/:id", async (req: Request, res: Response) => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const id = Number(req.params.id);
+  const { isActive, role, password, displayName } = req.body ?? {};
+  const updates: Record<string, any> = {};
+  if (typeof isActive === "boolean") updates.isActive = isActive;
+  if (role === "admin" || role === "steward") updates.role = role;
+  if (displayName) updates.displayName = String(displayName).trim();
+  if (password) updates.passwordHash = await bcrypt.hash(String(password), 12);
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "Nothing to update" });
+    return;
+  }
+  const [updated] = await db
+    .update(usersTable)
+    .set(updates)
+    .where(eq(usersTable.id, id))
+    .returning({
+      id: usersTable.id,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+    });
+  if (!updated) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(updated);
+});
+
 export default router;

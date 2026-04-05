@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, Bell, FolderOpen, Plus, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Bell, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/App";
 
@@ -64,7 +64,22 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   <div className="px-3 py-2.5 border-b border-border">
                     <p className="text-xs font-bold text-foreground">{user.displayName}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">@{user.username}</p>
+                    {user.role === "admin" && (
+                      <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                        Admin
+                      </span>
+                    )}
                   </div>
+                  {user.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                      Admin Panel
+                    </Link>
+                  )}
                   <button
                     onClick={() => { setShowUserMenu(false); logout(); }}
                     className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
