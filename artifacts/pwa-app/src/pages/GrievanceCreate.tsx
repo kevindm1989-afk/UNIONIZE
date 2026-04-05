@@ -59,7 +59,7 @@ export default function GrievanceCreate() {
       {
         data: {
           title: values.title,
-          memberId: values.memberId ? parseInt(values.memberId) : null,
+          memberId: values.memberId && values.memberId !== "none" ? parseInt(values.memberId) : null,
           description: values.description || null,
           contractArticle: values.contractArticle || null,
           step: parseInt(values.step),
@@ -115,7 +115,7 @@ export default function GrievanceCreate() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="rounded-xl">
-                      <SelectItem value="">General / Class Grievance</SelectItem>
+                      <SelectItem value="none">General / Class Grievance</SelectItem>
                       {members?.map((m) => (
                         <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                       ))}
