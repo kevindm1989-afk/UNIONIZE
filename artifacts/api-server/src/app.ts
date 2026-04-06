@@ -8,7 +8,7 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { seedAdminUser, ensureSessionTable, seedDefaultPermissions } from "./lib/seedAdmin";
+import { seedAdminUser, ensureSessionTable, ensureAiTables, seedDefaultPermissions } from "./lib/seedAdmin";
 const PgStore = connectPgSimple(session);
 const app: Express = express();
 // Trust the first proxy (Fly.io / Replit) so req.secure is correct when
@@ -59,6 +59,7 @@ app.use(
 app.use("/api", router);
 // Ensure sessions table exists, then seed admin and permissions
 ensureSessionTable()
+  .then(() => ensureAiTables())
   .then(() => seedAdminUser())
   .then(() => seedDefaultPermissions())
   .catch((err) => logger.error({ err }, "Startup tasks failed"));
