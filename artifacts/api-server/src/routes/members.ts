@@ -1,7 +1,9 @@
 import { Router } from "express";
-import { db, membersTable, grievancesTable } from "@workspace/db";
+import multer from "multer";
+import { db, membersTable, grievancesTable, memberFilesTable } from "@workspace/db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
+import { storageUpload } from "../lib/storageAdapter";
 import {
   CreateMemberBody,
   UpdateMemberBody,
@@ -11,6 +13,8 @@ import {
   DeleteMemberParams,
   GetMemberGrievancesParams,
 } from "@workspace/api-zod";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -206,5 +210,100 @@ function formatGrievanceWithMember(
     updatedAt: g.updatedAt.toISOString(),
   };
 }
+
+// ─── Member Files ──────────────────────────────────────────────────────────
+
+router.get("/:id/files", async (req, res) => {
+  const memberId = parseInt(req.params.id, 10);
+  if (isNaN(memberId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [member] = await db.select({ id: membersTable.id }).from(membersTable).where(eq(membersTable.id, memberId));
+  if (!member) { res.status(404).json({ error: "Member not found" }); return; }
+
+  const files = await db
+    .select()
+    .from(memberFilesTable)
+    .where(eq(memberFilesTable.memberId, memberId))
+    .orderBy(desc(memberFilesTable.uploadedAt));
+
+  res.json(files.map((f) => ({
+    id: f.id,
+    memberId: f.memberId,
+    category: f.category,
+    filename: f.filename,
+    objectPath: f.objectPath,
+    contentType: f.contentType,
+    fileSize: f.fileSize,
+    description: f.description ?? null,
+    uploadedAt: f.uploadedAt.toISOString(),
+  })));
+});
+
+router.post(
+  "/:id/files",
+  requirePermission("members.edit"),
+  upload.single("file"),
+  async (req, res) => {
+    const memberId = parseInt(req.params.id, 10);
+    if (isNaN(memberId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+    if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+
+    const [member] = await db.select({ id: membersTable.id }).from(membersTable).where(eq(membersTable.id, memberId));
+    if (!member) { res.status(404).json({ error: "Member not found" }); return; }
+
+    const category = (req.body.category as string) || "general";
+    const description = (req.body.description as string) || null;
+
+    try {
+      const { objectPath } = await storageUpload(
+        req.file.buffer,
+        req.file.mimetype || "application/octet-stream",
+      );
+
+      const [saved] = await db
+        .insert(memberFilesTable)
+        .values({
+          memberId,
+          category,
+          filename: req.file.originalname,
+          objectPath,
+          contentType: req.file.mimetype || "application/octet-stream",
+          fileSize: req.file.size,
+          description,
+        })
+        .returning();
+
+      res.status(201).json({
+        id: saved.id,
+        memberId: saved.memberId,
+        category: saved.category,
+        filename: saved.filename,
+        objectPath: saved.objectPath,
+        contentType: saved.contentType,
+        fileSize: saved.fileSize,
+        description: saved.description ?? null,
+        uploadedAt: saved.uploadedAt.toISOString(),
+      });
+    } catch (err) {
+      req.log.error({ err }, "Failed to upload member file");
+      res.status(500).json({ error: "Upload failed" });
+    }
+  },
+);
+
+router.delete("/:id/files/:fileId", requirePermission("members.edit"), async (req, res) => {
+  const memberId = parseInt(req.params.id, 10);
+  const fileId = parseInt(req.params.fileId, 10);
+  if (isNaN(memberId) || isNaN(fileId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [file] = await db
+    .select()
+    .from(memberFilesTable)
+    .where(and(eq(memberFilesTable.id, fileId), eq(memberFilesTable.memberId, memberId)));
+  if (!file) { res.status(404).json({ error: "File not found" }); return; }
+
+  await db.delete(memberFilesTable).where(eq(memberFilesTable.id, fileId));
+  res.status(204).end();
+});
 
 export default router;

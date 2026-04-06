@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useGetMember,
   useGetMemberGrievances,
@@ -18,15 +18,34 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useParams, Link, useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { usePermissions } from "@/App";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Phone, Mail, Building, Briefcase, Calendar,
   FileText, ChevronLeft, ArrowRight, Pencil, Trash2, Loader2,
+  Paperclip, Download, Upload, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+
+// ─── types ────────────────────────────────────────────────────────────────────
+
+type MemberFileCategory = "general" | "discipline" | "grievance";
+
+interface MemberFile {
+  id: number;
+  memberId: number;
+  category: MemberFileCategory;
+  filename: string;
+  objectPath: string;
+  contentType: string;
+  fileSize: number | null;
+  description: string | null;
+  uploadedAt: string;
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function field(label: string, children: React.ReactNode) {
   return (
@@ -36,6 +55,31 @@ function field(label: string, children: React.ReactNode) {
     </div>
   );
 }
+
+function formatBytes(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function downloadUrl(objectPath: string): string {
+  return `/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+}
+
+const CATEGORY_LABELS: Record<MemberFileCategory, string> = {
+  general: "General",
+  discipline: "Discipline",
+  grievance: "Grievance",
+};
+
+const CATEGORY_COLORS: Record<MemberFileCategory, string> = {
+  general: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  discipline: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  grievance: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+// ─── component ────────────────────────────────────────────────────────────────
 
 export default function MemberDetail() {
   const params = useParams();
@@ -56,6 +100,15 @@ export default function MemberDetail() {
   const [joinDate, setJoinDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Files state
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<MemberFileCategory>("general");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<MemberFileCategory | "all">("all");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: member, isLoading } = useGetMember(id, {
     query: { enabled: !!id, queryKey: getGetMemberQueryKey(id) },
   });
@@ -66,6 +119,29 @@ export default function MemberDetail() {
 
   const updateMember = useUpdateMember();
   const deleteMember = useDeleteMember();
+
+  // ── Files query ──
+  const filesQueryKey = ["member-files", id];
+  const { data: allFiles = [], isLoading: isLoadingFiles } = useQuery<MemberFile[]>({
+    queryKey: filesQueryKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${id}/files`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load files");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const res = await fetch(`/api/members/${id}/files/${fileId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete file");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: filesQueryKey }),
+  });
 
   // Populate form fields whenever member loads or edit sheet opens
   useEffect(() => {
@@ -125,6 +201,41 @@ export default function MemberDetail() {
       }
     );
   };
+
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("category", uploadCategory);
+      if (uploadDescription.trim()) formData.append("description", uploadDescription.trim());
+
+      const res = await fetch(`/api/members/${id}/files`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Upload failed");
+      }
+      await queryClient.invalidateQueries({ queryKey: filesQueryKey });
+      setUploadOpen(false);
+      setUploadFile(null);
+      setUploadDescription("");
+      setUploadCategory("general");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const displayedFiles =
+    activeCategory === "all"
+      ? allFiles
+      : allFiles.filter((f) => f.category === activeCategory);
 
   const statusBadge = (isActive: boolean) => (
     <span
@@ -265,6 +376,136 @@ export default function MemberDetail() {
                     </div>
                   </div>
                 </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ─── Member Files ──────────────────────────────────────────── */}
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Files
+            </p>
+            {can("members.edit") && (
+              <button
+                className="text-xs font-bold text-primary uppercase tracking-wider"
+                onClick={() => setUploadOpen(true)}
+              >
+                + Upload
+              </button>
+            )}
+          </div>
+
+          {/* Category filter tabs */}
+          {allFiles.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              {(["all", "general", "discipline", "grievance"] as const).map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    "shrink-0 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full transition-colors",
+                    activeCategory === cat
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {cat === "all" ? "All" : CATEGORY_LABELS[cat]}
+                  {cat !== "all" && (
+                    <span className="ml-1 opacity-60">
+                      {allFiles.filter((f) => f.category === cat).length}
+                    </span>
+                  )}
+                  {cat === "all" && (
+                    <span className="ml-1 opacity-60">{allFiles.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isLoadingFiles ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 rounded-xl" />
+              <Skeleton className="h-16 rounded-xl" />
+            </div>
+          ) : !displayedFiles.length ? (
+            <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
+              <Paperclip className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-20" />
+              <p className="text-sm text-muted-foreground">
+                {allFiles.length ? "No files in this category" : "No files uploaded yet"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displayedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Paperclip className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{file.filename}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                          CATEGORY_COLORS[file.category as MemberFileCategory] ?? "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {CATEGORY_LABELS[file.category as MemberFileCategory] ?? file.category}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatBytes(file.fileSize)}
+                        {file.fileSize ? " · " : ""}
+                        {format(new Date(file.uploadedAt), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    {file.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{file.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <a
+                      href={downloadUrl(file.objectPath)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={file.filename}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-muted-foreground" />
+                    </a>
+                    {can("members.edit") && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-destructive/10 transition-colors">
+                            <Trash2 className="w-4 h-4 text-destructive/70" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-[320px] rounded-2xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete file?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              "{file.filename}" will be permanently removed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-col gap-2">
+                            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteFileMutation.mutate(file.id)}
+                              className="bg-destructive hover:bg-destructive/90 w-full rounded-xl"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -433,6 +674,104 @@ export default function MemberDetail() {
                 disabled={saving || !name.trim()}
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Upload sheet */}
+      <Sheet open={uploadOpen} onOpenChange={(o) => { if (!uploading) setUploadOpen(o); }}>
+        <SheetContent side="bottom" className="h-auto max-h-[85dvh] rounded-t-2xl overflow-y-auto">
+          <SheetHeader className="mb-5">
+            <SheetTitle className="text-lg font-extrabold tracking-tight">Upload File</SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-4 pb-8">
+            {/* File picker */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                File *
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+              />
+              {uploadFile ? (
+                <div className="h-12 rounded-xl bg-card border border-border px-4 flex items-center justify-between">
+                  <span className="text-sm font-medium truncate flex-1">{uploadFile.name}</span>
+                  <button
+                    onClick={() => { setUploadFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="ml-2 shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full h-12 rounded-xl gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4" />
+                  Choose File
+                </Button>
+              )}
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Category
+              </label>
+              <div className="flex gap-2">
+                {(["general", "discipline", "grievance"] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setUploadCategory(cat)}
+                    className={cn(
+                      "flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors",
+                      uploadCategory === cat
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-card text-foreground border-border"
+                    )}
+                  >
+                    {CATEGORY_LABELS[cat]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Description (optional)
+              </label>
+              <Input
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                placeholder="Brief description..."
+                className="h-12 rounded-xl bg-card"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-xl"
+                onClick={() => setUploadOpen(false)}
+                disabled={uploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-xl font-bold"
+                onClick={handleUpload}
+                disabled={uploading || !uploadFile}
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
               </Button>
             </div>
           </div>

@@ -32,6 +32,27 @@ const STEWARD_DEFAULT: Permission[] = [
   "documents.view",
 ];
 
+export async function ensureMemberFilesTable(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS member_files (
+        id SERIAL PRIMARY KEY,
+        member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        category VARCHAR(50) NOT NULL DEFAULT 'general',
+        filename VARCHAR(255) NOT NULL,
+        object_path VARCHAR(512) NOT NULL,
+        content_type VARCHAR(100) NOT NULL DEFAULT 'application/octet-stream',
+        file_size INTEGER,
+        description TEXT,
+        uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureAiTables(): Promise<void> {
   const client = await pool.connect();
   try {
