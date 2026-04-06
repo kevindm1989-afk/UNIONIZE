@@ -1,15 +1,31 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-// Prefer the user's own API key; fall back to Replit AI Integrations proxy
-const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
-const baseURL = process.env.ANTHROPIC_API_KEY
-  ? undefined // use the default Anthropic API URL
-  : process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+// Lazy singleton — created on first use so a missing key only fails
+// when the AI route is actually called, not at server startup.
+let _client: Anthropic | null = null;
 
-if (!apiKey) {
-  throw new Error(
-    "ANTHROPIC_API_KEY must be set to use the AI assistant.",
-  );
+export function getAnthropicClient(): Anthropic {
+  if (_client) return _client;
+
+  const apiKey =
+    process.env.ANTHROPIC_API_KEY ?? process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  const baseURL = process.env.ANTHROPIC_API_KEY
+    ? undefined // use Anthropic's default URL
+    : process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set. Add it via: fly secrets set ANTHROPIC_API_KEY=sk-ant-...",
+    );
+  }
+
+  _client = new Anthropic({ apiKey, baseURL });
+  return _client;
 }
 
-export const anthropic = new Anthropic({ apiKey, baseURL });
+// Backwards-compatible named export used by the route
+export const anthropic = new Proxy({} as Anthropic, {
+  get(_target, prop) {
+    return (getAnthropicClient() as any)[prop];
+  },
+});
