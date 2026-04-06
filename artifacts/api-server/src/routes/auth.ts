@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db, usersTable, accessRequestsTable, rolePermissionsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { ALL_PERMISSIONS, loadUserPermissions } from "../lib/seedAdmin";
+import { sendAccessRequestNotification } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -133,6 +134,13 @@ router.post("/auth/request-access", async (req: Request, res: Response) => {
       .returning();
 
     res.status(201).json(request);
+
+    // Fire-and-forget — don't let email failure affect the response
+    sendAccessRequestNotification({
+      requesterName: request.name,
+      requesterUsername: request.username,
+      reason: request.reason,
+    });
   } catch (err) {
     req.log.error({ err }, "Access request error");
     res.status(500).json({ error: "Internal server error" });
