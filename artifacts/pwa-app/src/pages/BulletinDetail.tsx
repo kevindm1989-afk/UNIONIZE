@@ -37,17 +37,19 @@ export default function BulletinDetail() {
     query: { enabled: !!announcementId, queryKey: getGetAnnouncementQueryKey(announcementId) },
   });
 
-  const deleteAnnouncement = useDeleteAnnouncement();
-
-  const handleDelete = () => {
-    deleteAnnouncement.mutate({ id: announcementId }, {
+  const deleteAnnouncement = useDeleteAnnouncement({
+    mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListAnnouncementsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
         setLocation("/bulletins");
       },
-    });
+    },
+  });
+
+  const handleDelete = () => {
+    deleteAnnouncement.mutate({ id: announcementId });
   };
 
   if (isLoading) {

@@ -58,7 +58,17 @@ const formSchema = z.object({
 export default function GrievanceCreate() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const createGrievance = useCreateGrievance();
+  const createGrievance = useCreateGrievance({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetGrievancesSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
+        setLocation("/grievances");
+      },
+    },
+  });
   const { data: members } = useListMembers();
   const [showTemplates, setShowTemplates] = useState(false);
 
@@ -95,31 +105,20 @@ export default function GrievanceCreate() {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    createGrievance.mutate(
-      {
-        data: {
-          title: values.title,
-          memberId: values.memberId && values.memberId !== "none" ? parseInt(values.memberId) : null,
-          description: values.description || null,
-          contractArticle: values.contractArticle || null,
-          step: parseInt(values.step),
-          status: values.status,
-          filedDate: values.filedDate,
-          dueDate: values.dueDate || null,
-          notes: values.notes || null,
-          accommodationRequest: values.accommodationRequest,
-        },
+    createGrievance.mutate({
+      data: {
+        title: values.title,
+        memberId: values.memberId && values.memberId !== "none" ? parseInt(values.memberId) : null,
+        description: values.description || null,
+        contractArticle: values.contractArticle || null,
+        step: parseInt(values.step),
+        status: values.status,
+        filedDate: values.filedDate,
+        dueDate: values.dueDate || null,
+        notes: values.notes || null,
+        accommodationRequest: values.accommodationRequest,
       },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetGrievancesSummaryQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
-          setLocation("/grievances");
-        },
-      }
-    );
+    });
   };
 
   return (

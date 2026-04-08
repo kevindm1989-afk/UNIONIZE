@@ -28,7 +28,16 @@ const formSchema = z.object({
 export default function BulletinCreate() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const createAnnouncement = useCreateAnnouncement();
+  const createAnnouncement = useCreateAnnouncement({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnnouncementsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
+        setLocation("/bulletins");
+      },
+    },
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,14 +45,7 @@ export default function BulletinCreate() {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    createAnnouncement.mutate({ data: values }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListAnnouncementsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
-        setLocation("/bulletins");
-      },
-    });
+    createAnnouncement.mutate({ data: values });
   };
 
   return (

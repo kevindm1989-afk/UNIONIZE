@@ -151,8 +151,30 @@ export default function GrievanceDetail() {
     query: { enabled: !!grievanceId, queryKey: getGetGrievanceQueryKey(grievanceId) },
   });
 
-  const updateGrievance = useUpdateGrievance();
-  const deleteGrievance = useDeleteGrievance();
+  const updateGrievance = useUpdateGrievance({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetGrievanceQueryKey(grievanceId) });
+        queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetGrievancesSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
+        setTimeout(() => refetchNotes(), 300);
+      },
+    },
+  });
+
+  const deleteGrievance = useDeleteGrievance({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetGrievancesSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
+        setLocation("/grievances");
+      },
+    },
+  });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -265,33 +287,12 @@ export default function GrievanceDetail() {
     onSuccess: () => { setNewCommSummary(""); refetchCommLog(); },
   });
 
-  const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: getGetGrievanceQueryKey(grievanceId) });
-    queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetGrievancesSummaryQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
-  };
-
   const handleUpdate = (field: string, value: unknown) => {
-    updateGrievance.mutate(
-      { id: grievanceId, data: { [field]: value } },
-      {
-        onSuccess: () => {
-          invalidateAll();
-          setTimeout(() => refetchNotes(), 300);
-        },
-      },
-    );
+    updateGrievance.mutate({ id: grievanceId, data: { [field]: value } });
   };
 
   const handleDelete = () => {
-    deleteGrievance.mutate({ id: grievanceId }, {
-      onSuccess: () => {
-        invalidateAll();
-        setLocation("/grievances");
-      },
-    });
+    deleteGrievance.mutate({ id: grievanceId });
   };
 
   // Just cause toggle helper

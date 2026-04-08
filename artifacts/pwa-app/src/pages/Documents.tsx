@@ -100,12 +100,18 @@ export default function Documents() {
     query: { queryKey: getListDocumentsQueryKey() },
   });
 
-  const createDocument = useCreateDocument();
-  const deleteDocument = useDeleteDocument();
-  const updateDocument = useUpdateDocument();
-
   const { can } = usePermissions();
   const invalidateDocs = () => queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
+
+  const createDocument = useCreateDocument({
+    mutation: { onSuccess: invalidateDocs },
+  });
+  const deleteDocument = useDeleteDocument({
+    mutation: { onSuccess: invalidateDocs },
+  });
+  const updateDocument = useUpdateDocument({
+    mutation: { onSuccess: invalidateDocs },
+  });
 
   const resetSheet = () => {
     setUploadStep("idle");
@@ -144,26 +150,18 @@ export default function Documents() {
       setUploadProgress(95);
       setStatusText("Saving document record...");
 
-      await new Promise<void>((resolve, reject) => {
-        createDocument.mutate(
-          {
-            data: {
-              title: title.trim(),
-              category: uploadCategory as any,
-              description: description.trim() || null,
-              filename: result.filename,
-              objectPath: result.objectPath,
-              contentType: result.contentType,
-              fileSize: formatFileSize(result.fileSize),
-              isCurrent: true,
-              effectiveDate: effectiveDate || null,
-            },
-          },
-          {
-            onSuccess: () => { invalidateDocs(); resolve(); },
-            onError: (err) => reject(err),
-          }
-        );
+      await createDocument.mutateAsync({
+        data: {
+          title: title.trim(),
+          category: uploadCategory as any,
+          description: description.trim() || null,
+          filename: result.filename,
+          objectPath: result.objectPath,
+          contentType: result.contentType,
+          fileSize: formatFileSize(result.fileSize),
+          isCurrent: true,
+          effectiveDate: effectiveDate || null,
+        },
       });
 
       setUploadProgress(100);
@@ -182,11 +180,11 @@ export default function Documents() {
         updateDocument.mutate({ id: doc.id, data: { isCurrent: false } });
       }
     });
-    updateDocument.mutate({ id, data: { isCurrent: true } }, { onSuccess: invalidateDocs });
+    updateDocument.mutate({ id, data: { isCurrent: true } });
   };
 
   const handleDelete = (id: number) => {
-    deleteDocument.mutate({ id }, { onSuccess: invalidateDocs });
+    deleteDocument.mutate({ id });
   };
 
   const handleOpenDocument = (doc: { objectPath: string }) => {

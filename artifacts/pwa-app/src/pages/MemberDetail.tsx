@@ -201,8 +201,26 @@ export default function MemberDetail() {
     query: { enabled: !!id, queryKey: getGetMemberGrievancesQueryKey(id) },
   });
 
-  const updateMember = useUpdateMember();
-  const deleteMember = useDeleteMember();
+  const updateMember = useUpdateMember({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+        setEditOpen(false);
+        setSaving(false);
+      },
+      onError: () => setSaving(false),
+    },
+  });
+
+  const deleteMember = useDeleteMember({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+        setLocation("/members");
+      },
+    },
+  });
 
   // ── Files query ──
   const filesQueryKey = ["member-files", id];
@@ -308,57 +326,34 @@ export default function MemberDetail() {
     }
   }, [member, editOpen]);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(id) });
-    queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
-  };
-
   const handleSave = () => {
     if (!name.trim()) return;
     setSaving(true);
-    updateMember.mutate(
-      {
-        id,
-        data: {
-          name: name.trim(),
-          employeeId: employeeId || null,
-          department: department || null,
-          classification: classification || null,
-          phone: phone || null,
-          email: email || null,
-          joinDate: joinDate || null,
-          notes: notes || null,
-          seniorityDate: seniorityDate || null,
-          duesStatus: duesStatus || "current",
-          duesLastPaid: duesLastPaid || null,
-          shift: shift || null,
-          classificationDate: classificationDate || null,
-          smsEnabled,
-          emailEnabled,
-          pushEnabled,
-        } as any,
-      },
-      {
-        onSuccess: () => {
-          invalidate();
-          setEditOpen(false);
-          setSaving(false);
-        },
-        onError: () => setSaving(false),
-      }
-    );
+    updateMember.mutate({
+      id,
+      data: {
+        name: name.trim(),
+        employeeId: employeeId || null,
+        department: department || null,
+        classification: classification || null,
+        phone: phone || null,
+        email: email || null,
+        joinDate: joinDate || null,
+        notes: notes || null,
+        seniorityDate: seniorityDate || null,
+        duesStatus: duesStatus || "current",
+        duesLastPaid: duesLastPaid || null,
+        shift: shift || null,
+        classificationDate: classificationDate || null,
+        smsEnabled,
+        emailEnabled,
+        pushEnabled,
+      } as any,
+    });
   };
 
   const handleDelete = () => {
-    deleteMember.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
-          setLocation("/members");
-        },
-      }
-    );
+    deleteMember.mutate({ id });
   };
 
   const handleUpload = async () => {
