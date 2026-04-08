@@ -24,6 +24,18 @@ interface AccessRequest {
   name: string;
   username: string;
   reason: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  employeeId: string | null;
+  department: string | null;
+  shift: string | null;
+  message: string | null;
+  status: "pending" | "approved" | "rejected";
+  rejectionReason: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
   createdAt: string;
 }
 
@@ -51,21 +63,27 @@ export default function Admin() {
   const qc = useQueryClient();
 
   // ── Access Requests ─────────────────────────────────────────────────────────
+  const [requestsFilter, setRequestsFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+
   const { data: requests = [], isLoading: loadingRequests } = useQuery<AccessRequest[]>({
-    queryKey: ["/auth/access-requests"],
-    queryFn: () => fetchJson("/api/auth/access-requests"),
+    queryKey: ["/access-requests", requestsFilter],
+    queryFn: () => fetchJson(`/api/access-requests${requestsFilter !== "all" ? `?status=${requestsFilter}` : ""}`),
+    enabled: tab === "requests",
   });
+
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [denyTarget, setDenyTarget] = useState<AccessRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [tempPassword, setTempPassword] = useState<{ display: string; username: string } | null>(null);
   const [showPass, setShowPass] = useState(false);
 
   const approveMutation = useMutation({
     mutationFn: (id: number) =>
-      fetchJson(`/api/auth/access-requests/${id}/approve`, { method: "POST" }),
+      fetchJson(`/api/access-requests/${id}/approve`, { method: "PATCH" }),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["/auth/access-requests"] });
+      qc.invalidateQueries({ queryKey: ["/access-requests"] });
       qc.invalidateQueries({ queryKey: ["/auth/users"] });
       setApprovingId(null);
       setTempPassword({ display: data.tempPassword, username: data.user.username });
@@ -74,12 +92,17 @@ export default function Admin() {
   });
 
   const denyMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetchJson(`/api/auth/access-requests/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      fetchJson(`/api/access-requests/${id}/reject`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectionReason: reason }),
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/auth/access-requests"] });
+      qc.invalidateQueries({ queryKey: ["/access-requests"] });
       setDenyTarget(null);
-      toast({ title: "Request denied", description: "Access request removed." });
+      setRejectReason("");
+      toast({ title: "Request rejected", description: "Rejection email sent to applicant." });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -347,7 +370,7 @@ export default function Admin() {
         {/* Tabs */}
         <div className="flex gap-2 p-1 bg-muted rounded-xl">
           {([
-            { id: "requests" as Tab, label: "Requests", icon: ClipboardList, count: requests.length },
+            { id: "requests" as Tab, label: "Requests", icon: ClipboardList, count: requestsFilter === "pending" ? requests.length : null },
             { id: "users" as Tab, label: "Stewards", icon: Users, count: null },
             { id: "roles" as Tab, label: "Roles", icon: Settings, count: null },
             { id: "config" as Tab, label: "Config", icon: Mail, count: null },
@@ -377,6 +400,24 @@ export default function Admin() {
         {/* Access Requests Tab */}
         {tab === "requests" && (
           <section className="space-y-3">
+            {/* Filter sub-tabs */}
+            <div className="flex gap-1.5">
+              {(["pending", "approved", "rejected", "all"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setRequestsFilter(f)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors",
+                    requestsFilter === f
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
             {loadingRequests ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -384,53 +425,109 @@ export default function Admin() {
             ) : requests.length === 0 ? (
               <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
                 <ClipboardList className="w-9 h-9 mx-auto mb-3 text-muted-foreground opacity-20" />
-                <p className="text-sm font-semibold text-muted-foreground">No pending requests</p>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  No {requestsFilter !== "all" ? requestsFilter : ""} requests
+                </p>
                 <p className="text-xs text-muted-foreground/60 mt-1">New access requests will appear here</p>
               </div>
             ) : (
-              requests.map((r) => (
-                <div
-                  key={r.id}
-                  className="bg-card border border-border rounded-xl p-4 space-y-3"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm text-foreground">{r.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+              requests.map((r) => {
+                const displayName = r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
+                return (
+                  <div key={r.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-sm text-foreground">{displayName}</p>
+                          <span className={cn(
+                            "text-[10px] font-bold uppercase px-1.5 py-0.5 rounded",
+                            r.status === "pending" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                            r.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                            "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          )}>
+                            {r.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 font-mono">@{r.username}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground shrink-0">
                         {format(new Date(r.createdAt), "MMM d, yyyy")}
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">@{r.username}</p>
-                    {r.reason && (
-                      <p className="text-xs text-foreground/70 mt-1.5 italic">&ldquo;{r.reason}&rdquo;</p>
+
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      {r.email && (
+                        <div className="flex items-center gap-1 text-muted-foreground col-span-2">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{r.email}</span>
+                        </div>
+                      )}
+                      {r.employeeId && (
+                        <span className="text-muted-foreground">ID: <span className="font-mono text-foreground">{r.employeeId}</span></span>
+                      )}
+                      {r.department && (
+                        <span className="text-muted-foreground">Dept: <span className="text-foreground">{r.department}</span></span>
+                      )}
+                      {r.shift && (
+                        <span className="text-muted-foreground">Shift: <span className="capitalize text-foreground">{r.shift}</span></span>
+                      )}
+                      {r.phone && (
+                        <span className="text-muted-foreground">Phone: <span className="text-foreground">{r.phone}</span></span>
+                      )}
+                    </div>
+
+                    {(r.message || r.reason) && (
+                      <p className="text-xs text-foreground/70 italic border-t border-border pt-2">
+                        &ldquo;{r.message || r.reason}&rdquo;
+                      </p>
+                    )}
+
+                    {r.status === "rejected" && r.rejectionReason && (
+                      <div className="bg-destructive/10 rounded-lg px-3 py-2 text-xs">
+                        <span className="font-bold text-destructive">Rejection reason: </span>
+                        <span className="text-foreground/70">{r.rejectionReason}</span>
+                      </div>
+                    )}
+                    {r.reviewerName && r.reviewedAt && (
+                      <p className="text-[10px] text-muted-foreground/60 border-t border-border pt-2">
+                        Reviewed by {r.reviewerName} on {format(new Date(r.reviewedAt), "MMM d, yyyy")}
+                      </p>
+                    )}
+
+                    {r.status === "pending" && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-9 rounded-xl gap-1.5 font-bold"
+                          onClick={() => {
+                            setApprovingId(r.id);
+                            approveMutation.mutate(r.id);
+                          }}
+                          disabled={approveMutation.isPending && approvingId === r.id}
+                        >
+                          {approveMutation.isPending && approvingId === r.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          )}
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-9 rounded-xl gap-1.5 font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
+                          onClick={() => { setDenyTarget(r); setRejectReason(""); }}
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Reject
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 h-9 rounded-xl gap-1.5 font-bold"
-                      onClick={() => setApprovingId(r.id)}
-                      disabled={approveMutation.isPending && approvingId === r.id}
-                    >
-                      {approveMutation.isPending && approvingId === r.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      )}
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 h-9 rounded-xl gap-1.5 font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
-                      onClick={() => setDenyTarget(r)}
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      Deny
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </section>
         )}
@@ -797,22 +894,32 @@ export default function Admin() {
       </AlertDialog>
 
       {/* Deny Confirm */}
-      <AlertDialog open={denyTarget !== null} onOpenChange={(o) => { if (!o) setDenyTarget(null); }}>
-        <AlertDialogContent className="max-w-[320px] rounded-2xl">
+      <AlertDialog open={denyTarget !== null} onOpenChange={(o) => { if (!o) { setDenyTarget(null); setRejectReason(""); } }}>
+        <AlertDialogContent className="max-w-[340px] rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Deny Request?</AlertDialogTitle>
+            <AlertDialogTitle>Reject Request?</AlertDialogTitle>
             <AlertDialogDescription>
-              The access request from <strong>{denyTarget?.name}</strong> will be permanently removed.
+              Rejecting <strong>{denyTarget?.firstName && denyTarget?.lastName ? `${denyTarget.firstName} ${denyTarget.lastName}` : denyTarget?.name}</strong>'s request will send them a notification email with your reason.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="px-0 pb-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rejection Reason *</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Unable to verify employment, not currently eligible for membership..."
+              rows={3}
+              className="mt-1.5 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
           <AlertDialogFooter className="flex-col gap-2">
             <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 w-full rounded-xl"
-              onClick={() => denyTarget && denyMutation.mutate(denyTarget.id)}
-              disabled={denyMutation.isPending}
+              onClick={() => denyTarget && denyMutation.mutate({ id: denyTarget.id, reason: rejectReason })}
+              disabled={denyMutation.isPending || !rejectReason.trim()}
             >
-              {denyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Deny Request"}
+              {denyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reject Request"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

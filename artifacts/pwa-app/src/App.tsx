@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
+import RequestAccess from "@/pages/RequestAccess";
 
 import Dashboard from "@/pages/Dashboard";
 import Members from "@/pages/Members";
@@ -175,6 +176,11 @@ function App() {
   }
 
   if (authState === "unauthenticated") {
+    const path = window.location.pathname;
+    const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+    if (path === `${base}/request-access` || path.endsWith("/request-access")) {
+      return <RequestAccess />;
+    }
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>

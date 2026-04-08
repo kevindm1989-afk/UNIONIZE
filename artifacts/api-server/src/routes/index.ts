@@ -24,6 +24,7 @@ import coverageRouter from "./coverage";
 import pollsRouter from "./polls";
 import onboardingRouter from "./onboarding";
 import cbaInfoRouter from "./cba-info";
+import accessRequestsRouter from "./access-requests";
 import { requirePermission } from "../lib/permissions";
 
 // Init VAPID keys after the DB startup chain completes
@@ -33,6 +34,8 @@ const router: IRouter = Router();
 
 router.use(authRouter);
 router.use(healthRouter);
+// access-requests: public POST (rate-limited) + admin GET/PATCH/DELETE (internal auth check)
+router.use("/access-requests", accessRequestsRouter);
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) {

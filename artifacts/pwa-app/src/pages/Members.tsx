@@ -1,11 +1,38 @@
-import { useListMembers, getListMembersQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Search, Phone, Mail, ChevronRight, User } from "lucide-react";
-import { useState, useEffect } from "react";
+import {
+  Search, Phone, Mail, ChevronRight, User, Download,
+  Filter, CheckSquare, Square, Users, UserX, Loader2, Plus,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/App";
+import { cn } from "@/lib/utils";
+
+interface Member {
+  id: number;
+  name: string;
+  employeeId: string | null;
+  department: string | null;
+  classification: string | null;
+  phone: string | null;
+  email: string | null;
+  isActive: boolean;
+  duesStatus: string | null;
+  shift: string | null;
+  createdAt: string;
+}
+
+const fetchJson = async (url: string) => {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error("Request failed");
+  return res.json();
+};
 
 function useLocalDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -16,33 +43,214 @@ function useLocalDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+type StatusFilter = "active" | "inactive" | "all";
+
 export default function Members() {
+  const { can } = usePermissions();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const debouncedSearch = useLocalDebounce(search, 300);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [showFilters, setShowFilters] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [csvExporting, setCsvExporting] = useState(false);
 
-  const { data: members, isLoading } = useListMembers(
-    { search: debouncedSearch || undefined },
-    { query: { queryKey: getListMembersQueryKey({ search: debouncedSearch || undefined }) } }
-  );
+  const { data: allMembers = [], isLoading } = useQuery<Member[]>({
+    queryKey: ["members", debouncedSearch],
+    queryFn: () =>
+      fetchJson(`/api/members${debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""}`),
+  });
+
+  const members = allMembers.filter((m) => {
+    if (statusFilter === "active") return m.isActive;
+    if (statusFilter === "inactive") return !m.isActive;
+    return true;
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selected.size === members.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(members.map((m) => m.id)));
+    }
+  };
+
+  const exportCsv = async () => {
+    setCsvExporting(true);
+    try {
+      const rows = members.filter((m) => selected.size === 0 || selected.has(m.id));
+      const headers = ["ID", "Name", "Employee ID", "Department", "Classification", "Phone", "Email", "Status", "Dues Status", "Shift"];
+      const lines = [
+        headers.join(","),
+        ...rows.map((m) =>
+          [
+            m.id,
+            `"${(m.name ?? "").replace(/"/g, '""')}"`,
+            m.employeeId ?? "",
+            `"${(m.department ?? "").replace(/"/g, '""')}"`,
+            `"${(m.classification ?? "").replace(/"/g, '""')}"`,
+            m.phone ?? "",
+            m.email ?? "",
+            m.isActive ? "Active" : "Inactive",
+            m.duesStatus ?? "current",
+            m.shift ?? "",
+          ].join(",")
+        ),
+      ];
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `members-local1285-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: `Exported ${rows.length} member${rows.length !== 1 ? "s" : ""}` });
+    } finally {
+      setCsvExporting(false);
+    }
+  };
+
+  const pendingCount = allMembers.filter((m) => !m.isActive).length;
+  const activeCount = allMembers.filter((m) => m.isActive).length;
 
   return (
     <MobileLayout>
-      <div className="p-4 sm:p-6 space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Members</h1>
-          <p className="text-muted-foreground mt-1">Directory & contacts</p>
+      <div className="p-4 sm:p-6 space-y-4 pb-10">
+        <header className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Members</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">Directory & contacts</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {can("members.edit") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-xl gap-1.5"
+                onClick={() => { setBulkMode((v) => !v); setSelected(new Set()); }}
+              >
+                {bulkMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                {bulkMode ? "Done" : "Select"}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-xl gap-1.5"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+            </Button>
+          </div>
         </header>
 
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input 
-            placeholder="Search by name, ID, or department..." 
+          <Input
+            placeholder="Search by name, ID, or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 bg-card border-border shadow-sm text-base"
           />
         </div>
 
+        {/* Filters panel */}
+        {showFilters && (
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</p>
+            <div className="flex gap-2">
+              {([
+                { value: "active" as StatusFilter, label: "Active", count: activeCount, icon: Users },
+                { value: "inactive" as StatusFilter, label: "Inactive", count: pendingCount, icon: UserX },
+                { value: "all" as StatusFilter, label: "All", count: allMembers.length, icon: null },
+              ]).map(({ value, label, count, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setStatusFilter(value)}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl border text-sm font-bold transition-all",
+                    statusFilter === value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border text-muted-foreground"
+                  )}
+                >
+                  {Icon && <Icon className="w-4 h-4" />}
+                  {label}
+                  <span className={cn("text-[10px] font-semibold", statusFilter === value ? "opacity-80" : "opacity-60")}>
+                    {count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bulk actions bar */}
+        {bulkMode && (
+          <div className="bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-3">
+            <button onClick={selectAll} className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
+              {selected.size === members.length && members.length > 0 ? (
+                <CheckSquare className="w-4 h-4 text-primary" />
+              ) : (
+                <Square className="w-4 h-4" />
+              )}
+              {selected.size > 0 ? `${selected.size} selected` : "Select all"}
+            </button>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-lg gap-1.5 text-xs font-bold"
+              onClick={exportCsv}
+              disabled={csvExporting}
+            >
+              {csvExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Export CSV
+            </Button>
+          </div>
+        )}
+
+        {/* Export button (non-bulk mode) */}
+        {!bulkMode && can("members.edit") && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? "Loading..." : `${members.length} member${members.length !== 1 ? "s" : ""}`}
+              {statusFilter !== "all" && ` · ${statusFilter}`}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 rounded-lg gap-1 text-xs text-muted-foreground"
+                onClick={exportCsv}
+                disabled={csvExporting}
+              >
+                {csvExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                CSV
+              </Button>
+              <Link href="/members/new">
+                <Button size="sm" className="h-8 rounded-lg gap-1 text-xs font-bold">
+                  <Plus className="w-3 h-3" />
+                  Add
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* List */}
         <div className="space-y-3">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
@@ -56,17 +264,43 @@ export default function Members() {
                 </CardContent>
               </Card>
             ))
-          ) : members?.length === 0 ? (
+          ) : members.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <User className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p>No members found</p>
+              {statusFilter !== "all" && (
+                <button
+                  className="mt-2 text-sm text-primary font-semibold underline"
+                  onClick={() => setStatusFilter("all")}
+                >
+                  Show all members
+                </button>
+              )}
             </div>
           ) : (
-            members?.map((member) => (
-              <Link key={member.id} href={`/members/${member.id}`} className="block transition-transform active:scale-[0.98]">
-                <Card className="shadow-sm border-border hover:border-primary/50 transition-colors">
+            members.map((member) => {
+              const isSelected = selected.has(member.id);
+              const card = (
+                <Card
+                  key={member.id}
+                  className={cn(
+                    "shadow-sm border-border transition-colors",
+                    bulkMode ? "cursor-pointer" : "hover:border-primary/50",
+                    isSelected && "border-primary bg-primary/5"
+                  )}
+                  onClick={bulkMode ? () => toggleSelect(member.id) : undefined}
+                >
                   <CardContent className="p-4 flex items-center justify-between">
-                    <div>
+                    {bulkMode && (
+                      <div className="mr-3 shrink-0">
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-primary" />
+                        ) : (
+                          <Square className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-lg">{member.name}</span>
                         {!member.isActive && (
@@ -95,11 +329,18 @@ export default function Members() {
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    {!bulkMode && <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />}
                   </CardContent>
                 </Card>
-              </Link>
-            ))
+              );
+              return bulkMode ? (
+                <div key={member.id}>{card}</div>
+              ) : (
+                <Link key={member.id} href={`/members/${member.id}`} className="block transition-transform active:scale-[0.98]">
+                  {card}
+                </Link>
+              );
+            })
           )}
         </div>
       </div>

@@ -1,0 +1,135 @@
+You are adding a member access request system and enhanced admin member management to an existing union local PWA. The app is deployed on Fly.io with Neon PostgreSQL + Drizzle ORM. Do not modify any existing tables or routes unless explicitly told to below.
+
+## What already exists (do not rebuild)
+- Members, Grievances, Announcements, Dashboard
+- RBAC with roles: admin | steward | member
+- Express 5 + React + Vite + shadcn/ui + TanStack Query + Wouter
+- Audit logging on all member mutations
+
+## FEATURE 1 — MEMBER ACCESS REQUESTS
+
+### Database
+- New table: access_requests
+  - id
+  - first_name (text)
+  - last_name (text)
+  - email (text, unique)
+  - phone (text)
+  - employee_id (text)
+  - department (text)
+  - shift (enum: days | afternoons | nights | rotating)
+  - message (text, nullable) — optional note from applicant
+  - status (enum: pending | approved | rejected, default: pending)
+  - reviewed_by (FK to users, nullable)
+  - reviewed_at (timestamp, nullable)
+  - rejection_reason (text, nullable)
+  - created_at (timestamp)
+
+### API Routes
+- POST /api/access-requests — public endpoint, no auth required
+  - Rate limit: max 3 submissions per IP per hour
+  - Validate all fields with Zod
+  - Check for duplicate email or employee_id — return 409 if already exists in members or pending access_requests
+  - On success: trigger push notification + email to all admin users ("New member access request from [name]")
+- GET /api/access-requests — list all requests (admin only)
+  - Filter by status query param: ?status=pending|approved|rejected
+  - Sort: pending first, then by created_at desc
+- GET /api/access-requests/:id — get single request (admin only)
+- PATCH /api/access-requests/:id/approve — approve request (admin only)
+  - Creates a new record in members table using request data
+  - Creates a new record in users table with role: "member" and a temporary password (random 12 chars)
+  - Sets access_request status to approved, reviewed_by, reviewed_at
+  - Sends email to applicant with login credentials and welcome message
+  - Logs to audit_log
+- PATCH /api/access-requests/:id/reject — reject request (admin only)
+  - Requires rejection_reason in request body
+  - Sets status to rejected, reviewed_by, reviewed_at, rejection_reason
+  - Sends email to applicant notifying them of rejection with reason
+  - Logs to audit_log
+- DELETE /api/access-requests/:id — delete request (admin only, pending only)
+
+### Frontend — Public Request Form
+- New public route: /request-access — no login required
+- Clean, mobile-friendly form with fields:
+  - First name, Last name, Email, Phone, Employee ID, Department, Shift (dropdown), Message (optional textarea)
+- Client-side Zod validation before submit
+- On success: show confirmation message "Your request has been submitted. An administrator will review it and contact you shortly."
+- On duplicate: show clear message "An account with this email or employee ID already exists or is pending review."
+- Link to this page from the login screen: "Request Access" button below the login form
+
+### Frontend — Admin Request Queue
+- New page: /admin/access-requests (admin only)
+- Tabbed view: Pending | Approved | Rejected
+- Pending tab shows count badge
+- Each request card shows: name, employee ID, department, shift, submitted date, message
+- Action buttons on pending cards: "Approve" (green) | "Reject" (red)
+- Reject opens a modal requiring rejection_reason text before confirming
+- Approve shows a confirmation dialog: "This will create a member account and send login credentials to [email]. Confirm?"
+- Approved/Rejected tabs show read-only history with reviewer name and date
+- Push notification badge on admin nav when new requests arrive
+
+## FEATURE 2 — ADMIN MEMBER MANAGEMENT
+
+### Enhanced Member Edit (extend existing)
+- Extend existing PATCH /api/members/:id to allow admin to update ALL fields including:
+  - role (enum: member | steward | admin) — role promotion/demotion
+  - is_active (boolean) — deactivate without deleting
+  - dues_status (enum: current | arrears | exempt)
+  - seniority_date, classification, department, shift
+  - notes (admin-only internal notes field)
+- All changes must be logged to audit_log with old_value and new_value
+- Role changes require the acting user to be admin — stewards cannot change roles
+
+### Member Deactivation
+- PATCH /api/members/:id/deactivate (admin only)
+  - Sets is_active to false
+  - Sets user account to disabled (cannot log in)
+  - Does NOT delete any data — preserves grievance history, journal entries, discipline records
+  - Requires deactivation_reason in request body
+  - Logs to audit_log
+  - Sends email notification to member: "Your union membership account has been deactivated. Contact your steward for more information."
+- PATCH /api/members/:id/reactivate (admin only)
+  - Sets is_active back to true, re-enables login
+  - Logs to audit_log
+
+### Member Deletion
+- DELETE /api/members/:id (admin only)
+  - Hard delete — only allowed if member has NO grievances, discipline records, or journal entries
+  - If related records exist: return 409 with message "Cannot delete member with existing records. Deactivate instead."
+  - Requires confirmation token in request body (send a DELETE /api/members/:id/confirm-delete first to get a short-lived token, then pass it to the DELETE)
+  - Logs to audit_log before deletion
+  - Cascades: deletes user account, onboarding checklist, push subscriptions, poll responses
+  - Does NOT cascade to grievances — block deletion if any exist
+
+### Role Management UI (admin only)
+- Inside member detail page add an "Account" tab (admin only)
+- Shows: current role badge, account status (active/inactive), last login date
+- Role selector dropdown: member | steward | admin
+  - Changing to admin requires a second confirmation dialog: "You are granting full admin access. This cannot be undone without admin access. Confirm?"
+- Deactivate / Reactivate button with reason input
+- Delete button — disabled (greyed out) if member has any records, tooltip explains why
+- All actions require admin role — stewards see this tab as read-only
+
+### Admin Member List Enhancements
+- Add filters to existing member list: Active | Inactive | All
+- Add role filter: All | Member | Steward | Admin
+- Inactive members shown with greyed out styling and "Inactive" badge
+- Bulk actions (admin only): select multiple members → Deactivate Selected | Export Selected (CSV)
+- CSV export fields: name, employee_id, department, classification, shift, seniority_date, dues_status, join_date, role, is_active
+
+## Coding Rules
+- Always use Drizzle ORM — never raw SQL
+- All new tables need a migration file under db/migrations/
+- All new API routes need corresponding OpenAPI spec entries and Orval codegen run
+- Public routes (/api/access-requests POST) must be explicitly excluded from auth middleware
+- Role checks on every protected route: throw 403 if role insufficient
+- Never expose rejection_reason to the applicant in the API response for approved requests
+- TypeScript strict mode — no `any` types
+- Error responses: { error: string, code: string } format consistently
+- All dates stored as UTC
+- Rate limiting on public endpoints via express-rate-limit
+Key design decisions baked in:
+Soft delete first — deactivation preserves all history, hard delete only if no records exist, protecting grievance integrity
+Confirmation token on delete — two-step process prevents accidental permanent deletions
+Public request form is completely unauthenticated but rate-limited to prevent spam
+Audit log on every action — every role change, deactivation, and approval is tracked with old/new values

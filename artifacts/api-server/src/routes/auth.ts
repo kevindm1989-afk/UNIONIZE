@@ -65,6 +65,9 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     req.session.permissions = permissions;
     req.session.linkedMemberId = user.linkedMemberId ?? undefined;
 
+    // Track last login time (fire-and-forget)
+    db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id)).catch(() => {});
+
     req.session.save((err) => {
       if (err) {
         req.log.error({ err }, "Session save failed");
@@ -350,6 +353,31 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
     return;
   }
   res.json(updated);
+});
+
+/**
+ * PATCH /auth/users/:id/role — admin only: change a user's role
+ */
+router.patch("/auth/users/:id/role", async (req: Request, res: Response) => {
+  if (!["admin", "chair"].includes(req.session.role)) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) { res.status(400).json({ error: "Invalid user ID" }); return; }
+  const { role } = req.body ?? {};
+  const VALID_ROLES = ["admin", "chair", "steward", "member"];
+  if (!role || !VALID_ROLES.includes(role)) {
+    res.status(400).json({ error: "role must be one of: admin, chair, steward, member" });
+    return;
+  }
+  const [user] = await db
+    .update(usersTable)
+    .set({ role })
+    .where(eq(usersTable.id, userId))
+    .returning({ id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName, role: usersTable.role });
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  res.json(user);
 });
 
 /**

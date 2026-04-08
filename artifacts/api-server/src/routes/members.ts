@@ -1,7 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
-import { db, membersTable, grievancesTable, memberFilesTable } from "@workspace/db";
+import { db, membersTable, grievancesTable, memberFilesTable, usersTable } from "@workspace/db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
+import { sendMemberDeactivatedEmail } from "../lib/email";
 import { requirePermission } from "../lib/permissions";
 import { storageUpload } from "../lib/storageAdapter";
 import { logAudit } from "../lib/auditLog";
@@ -192,8 +193,78 @@ router.delete("/:id", requirePermission("members.edit"), async (req, res) => {
   if (existing) {
     await logAudit(req, "delete", "member", existing.id, formatMember(existing), null);
   }
+  // Also deactivate any linked user
+  const [linkedUser] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.linkedMemberId, parsed.data.id))
+    .limit(1);
+  if (linkedUser) {
+    await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, linkedUser.id));
+  }
   await db.delete(membersTable).where(eq(membersTable.id, parsed.data.id));
   res.status(204).end();
+});
+
+// ─── Deactivate member ────────────────────────────────────────────────────────
+router.patch("/:id/deactivate", requirePermission("members.edit"), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  if (!existing.isActive) { res.status(400).json({ error: "Member is already inactive" }); return; }
+
+  const [updated] = await db
+    .update(membersTable)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(membersTable.id, id))
+    .returning();
+
+  // Also deactivate linked user
+  const [linkedUser] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.linkedMemberId, id))
+    .limit(1);
+  if (linkedUser?.isActive) {
+    await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, linkedUser.id));
+    if (linkedUser.username && existing.email) {
+      sendMemberDeactivatedEmail({ recipientEmail: existing.email, recipientName: existing.name }).catch(() => {});
+    }
+  }
+
+  await logAudit(req, "update", "member", id, { isActive: true }, { isActive: false });
+  res.json(formatMember(updated));
+});
+
+// ─── Reactivate member ────────────────────────────────────────────────────────
+router.patch("/:id/reactivate", requirePermission("members.edit"), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  if (existing.isActive) { res.status(400).json({ error: "Member is already active" }); return; }
+
+  const [updated] = await db
+    .update(membersTable)
+    .set({ isActive: true, updatedAt: new Date() })
+    .where(eq(membersTable.id, id))
+    .returning();
+
+  // Also reactivate linked user
+  const [linkedUser] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.linkedMemberId, id))
+    .limit(1);
+  if (linkedUser) {
+    await db.update(usersTable).set({ isActive: true }).where(eq(usersTable.id, linkedUser.id));
+  }
+
+  await logAudit(req, "update", "member", id, { isActive: false }, { isActive: true });
+  res.json(formatMember(updated));
 });
 
 function formatMember(m: typeof membersTable.$inferSelect) {

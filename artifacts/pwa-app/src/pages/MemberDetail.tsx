@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { usePermissions } from "@/App";
+import { usePermissions, useAuth } from "@/App";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Phone, Mail, Building, Briefcase, Calendar,
   FileText, ChevronLeft, ArrowRight, Pencil, Trash2, Loader2,
   Paperclip, Download, Upload, X, AlertOctagon, ClipboardCheck, Plus,
+  UserX, UserCheck, ShieldAlert,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -150,8 +152,13 @@ export default function MemberDetail() {
   const queryClient = useQueryClient();
 
   const { can } = usePermissions();
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
+  const isAdmin = authUser?.role === "admin" || authUser?.role === "chair";
+
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
 
   const [name, setName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
@@ -257,6 +264,26 @@ export default function MemberDetail() {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: onboardingKey }),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: () => fetchJson(`/api/members/${id}/deactivate`, { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+      toast({ title: "Member deactivated", description: "Their portal access has been suspended." });
+    },
+    onError: () => toast({ title: "Error", description: "Could not deactivate member.", variant: "destructive" }),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: () => fetchJson(`/api/members/${id}/reactivate`, { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+      toast({ title: "Member reactivated", description: "Portal access has been restored." });
+    },
+    onError: () => toast({ title: "Error", description: "Could not reactivate member.", variant: "destructive" }),
   });
 
   // Populate form fields whenever member loads or edit sheet opens
@@ -775,37 +802,99 @@ export default function MemberDetail() {
           </div>
         </section>
 
-        {/* Danger zone — remove member */}
+        {/* Account Management */}
         {member && can("members.edit") && (
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
+            <div className="flex items-center gap-1.5 mb-3">
+              <ShieldAlert className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Account Management</p>
+            </div>
+
+            {/* Deactivate / Reactivate */}
             <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full h-11 rounded-xl gap-2",
+                    member.isActive
+                      ? "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                      : "border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                  )}
+                  disabled={deactivateMutation.isPending || reactivateMutation.isPending}
+                >
+                  {member.isActive ? (
+                    <><UserX className="w-4 h-4" /> Deactivate Member</>
+                  ) : (
+                    <><UserCheck className="w-4 h-4" /> Reactivate Member</>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-[320px] rounded-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {member.isActive ? "Deactivate" : "Reactivate"} {member.name}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {member.isActive
+                      ? "This will suspend their portal access and send a notification email if they have one on file. You can reactivate them at any time."
+                      : "This will restore their portal access and allow them to log in again."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col gap-2">
+                  <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className={cn("w-full rounded-xl", member.isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700")}
+                    onClick={() => member.isActive ? deactivateMutation.mutate() : reactivateMutation.mutate()}
+                    disabled={deactivateMutation.isPending || reactivateMutation.isPending}
+                  >
+                    {(deactivateMutation.isPending || reactivateMutation.isPending) ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      member.isActive ? "Deactivate" : "Reactivate"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete with name confirmation */}
+            <AlertDialog onOpenChange={(open) => { if (!open) setDeleteConfirmName(""); }}>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
                   className="w-full h-11 rounded-xl text-destructive hover:bg-destructive/10 gap-2 border border-dashed border-destructive/30"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Remove Member
+                  Permanently Delete Member
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="max-w-[320px] rounded-2xl">
+              <AlertDialogContent className="max-w-[340px] rounded-2xl">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove {member.name}?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete {member.name}?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This permanently deletes the member record and all associated data. This action cannot be undone.
+                    This permanently deletes the member record, all grievances, discipline records, and associated data. <strong>This cannot be undone.</strong>
+                    <br /><br />
+                    Type <strong className="font-mono">{member.name}</strong> to confirm.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
+                <Input
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={member.name}
+                  className="mx-0 rounded-xl font-mono"
+                />
                 <AlertDialogFooter className="flex-col gap-2">
                   <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDelete}
                     className="bg-destructive hover:bg-destructive/90 w-full rounded-xl"
-                    disabled={deleteMember.isPending}
+                    disabled={deleteMember.isPending || deleteConfirmName !== member.name}
                   >
                     {deleteMember.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      "Remove Member"
+                      "Permanently Delete"
                     )}
                   </AlertDialogAction>
                 </AlertDialogFooter>

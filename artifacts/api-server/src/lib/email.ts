@@ -153,6 +153,149 @@ export async function sendAccessRequestNotification(opts: {
   });
 }
 
+// ─── Notification: access request approved ────────────────────────────────────
+
+export async function sendAccessRequestApprovedEmail(opts: {
+  recipientEmail: string;
+  recipientName: string;
+  username: string;
+  tempPassword: string;
+}): Promise<void> {
+  const portalUrl = process.env.PORTAL_URL ?? "https://union-local-1285.fly.dev";
+  await send({
+    to: opts.recipientEmail,
+    subject: "Your Union Local 1285 membership account has been approved",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111;">Welcome to Local 1285!</h2>
+        <p style="margin:0 0 20px;color:#555;font-size:14px;">
+          Hi ${opts.recipientName}, your access request has been approved. Here are your login credentials:
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;background:#f9fafb;border-radius:8px;padding:16px;">
+          <tr>
+            <td style="padding:8px 12px;color:#888;width:120px;">Portal URL</td>
+            <td style="padding:8px 12px;font-weight:600;color:#111;"><a href="${portalUrl}">${portalUrl}</a></td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#888;">Username</td>
+            <td style="padding:8px 12px;font-weight:600;color:#111;font-family:monospace;">${opts.username}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#888;">Temporary Password</td>
+            <td style="padding:8px 12px;font-weight:600;color:#b91c1c;font-family:monospace;">${opts.tempPassword}</td>
+          </tr>
+        </table>
+        <p style="margin-top:16px;color:#888;font-size:13px;">Please log in and change your password immediately.</p>
+        <div style="margin-top:24px;">
+          <a href="${portalUrl}" style="display:inline-block;background:#b91c1c;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:14px;">Sign In Now</a>
+        </div>
+        <p style="margin-top:24px;font-size:12px;color:#aaa;">Union Local 1285 — Steward Portal</p>
+      </div>
+    `,
+    text: [
+      `Welcome to Union Local 1285, ${opts.recipientName}!`,
+      "",
+      "Your access request has been approved. Here are your login credentials:",
+      `Portal: ${portalUrl}`,
+      `Username: ${opts.username}`,
+      `Temporary Password: ${opts.tempPassword}`,
+      "",
+      "Please log in and change your password immediately.",
+    ].join("\n"),
+  });
+}
+
+// ─── Notification: access request rejected ────────────────────────────────────
+
+export async function sendAccessRequestRejectedEmail(opts: {
+  recipientEmail: string;
+  recipientName: string;
+  rejectionReason: string;
+}): Promise<void> {
+  await send({
+    to: opts.recipientEmail,
+    subject: "Update on your Union Local 1285 access request",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111;">Access Request Update</h2>
+        <p style="margin:0 0 16px;color:#555;font-size:14px;">
+          Hi ${opts.recipientName}, after reviewing your membership access request, we are unable to approve it at this time.
+        </p>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin-bottom:16px;">
+          <p style="margin:0;font-size:14px;color:#7f1d1d;font-weight:600;">Reason:</p>
+          <p style="margin:4px 0 0;font-size:14px;color:#111;">${opts.rejectionReason}</p>
+        </div>
+        <p style="color:#555;font-size:13px;">If you believe this is an error, please contact your union steward directly.</p>
+        <p style="margin-top:24px;font-size:12px;color:#aaa;">Union Local 1285 — Steward Portal</p>
+      </div>
+    `,
+    text: [
+      `Hi ${opts.recipientName},`,
+      "",
+      "After reviewing your membership access request, we are unable to approve it at this time.",
+      "",
+      `Reason: ${opts.rejectionReason}`,
+      "",
+      "If you believe this is an error, please contact your union steward directly.",
+    ].join("\n"),
+  });
+}
+
+// ─── Notification: new enhanced access request to admins ──────────────────────
+
+export async function sendNewMemberRequestNotification(opts: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  employeeId: string | null;
+  department: string | null;
+}): Promise<void> {
+  const adminEmail = await getAdminEmail();
+  if (!adminEmail) return;
+  const portalUrl = process.env.PORTAL_URL ?? "https://union-local-1285.fly.dev";
+  const name = `${opts.firstName} ${opts.lastName}`;
+  await send({
+    to: adminEmail,
+    subject: `New member access request from ${name}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111;">New Member Access Request</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <tr><td style="padding:8px 0;color:#888;width:140px;">Name</td><td style="padding:8px 0;font-weight:600;">${name}</td></tr>
+          <tr><td style="padding:8px 0;color:#888;">Email</td><td style="padding:8px 0;">${opts.email}</td></tr>
+          ${opts.employeeId ? `<tr><td style="padding:8px 0;color:#888;">Employee ID</td><td style="padding:8px 0;font-family:monospace;">${opts.employeeId}</td></tr>` : ""}
+          ${opts.department ? `<tr><td style="padding:8px 0;color:#888;">Department</td><td style="padding:8px 0;">${opts.department}</td></tr>` : ""}
+        </table>
+        <div style="margin-top:24px;">
+          <a href="${portalUrl}/admin" style="display:inline-block;background:#b91c1c;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:14px;">Review in Admin Panel</a>
+        </div>
+        <p style="margin-top:24px;font-size:12px;color:#aaa;">Union Local 1285 — Steward Portal</p>
+      </div>
+    `,
+    text: `New member access request from ${name} (${opts.email}). Review at: ${portalUrl}/admin`,
+  });
+}
+
+// ─── Notification: member account deactivated ─────────────────────────────────
+
+export async function sendMemberDeactivatedEmail(opts: {
+  recipientEmail: string;
+  recipientName: string;
+}): Promise<void> {
+  await send({
+    to: opts.recipientEmail,
+    subject: "Your Union Local 1285 membership account has been deactivated",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111;">Account Deactivated</h2>
+        <p style="color:#555;font-size:14px;">Hi ${opts.recipientName}, your union membership account has been deactivated. Contact your steward for more information.</p>
+        <p style="margin-top:24px;font-size:12px;color:#aaa;">Union Local 1285 — Steward Portal</p>
+      </div>
+    `,
+    text: `Hi ${opts.recipientName}, your union membership account has been deactivated. Contact your steward for more information.`,
+  });
+}
+
 // ─── Notification: grievance filed ────────────────────────────────────────────
 
 export async function sendGrievanceFiledNotification(opts: {

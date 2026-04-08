@@ -94,6 +94,32 @@ export async function ensureLocalSettingsTable(): Promise<void> {
   }
 }
 
+export async function ensureAccessRequestEnhancements(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE access_requests
+        ADD COLUMN IF NOT EXISTS first_name TEXT,
+        ADD COLUMN IF NOT EXISTS last_name TEXT,
+        ADD COLUMN IF NOT EXISTS email TEXT,
+        ADD COLUMN IF NOT EXISTS phone TEXT,
+        ADD COLUMN IF NOT EXISTS employee_id TEXT,
+        ADD COLUMN IF NOT EXISTS department TEXT,
+        ADD COLUMN IF NOT EXISTS shift TEXT,
+        ADD COLUMN IF NOT EXISTS message TEXT,
+        ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+        ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
+    `);
+    // Also add last_login_at to users if not present
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureGrievanceEnhancements(): Promise<void> {
   const client = await pool.connect();
   try {
