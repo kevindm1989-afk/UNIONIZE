@@ -59,9 +59,10 @@ export default function MemberCreate() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     createMember.mutate({ data: {
       ...values,
-      email: values.email || undefined, // Send undefined if empty
+      email: values.email || undefined,
+      joinDate: values.joinDate || undefined,
       isActive: true
-    }});
+    } as Parameters<typeof createMember.mutate>[0]["data"]});
   }
 
   return (
