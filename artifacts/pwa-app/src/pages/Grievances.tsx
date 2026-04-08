@@ -114,10 +114,17 @@ export default function Grievances() {
                         )}
                       </div>
                       
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" /> 
-                        Filed {format(new Date(g.filedDate), 'MMM d')}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Filed {format(new Date(g.filedDate), 'MMM d')}
+                        </span>
+                        {g.dueDate && (
+                          <span className={g.isOverdue ? "text-red-600 font-medium" : ""}>
+                            Due {format(new Date(g.dueDate), 'MMM d')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
