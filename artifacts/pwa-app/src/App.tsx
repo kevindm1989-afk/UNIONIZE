@@ -24,6 +24,10 @@ import Meetings from "@/pages/Meetings";
 import MeetingCreate from "@/pages/MeetingCreate";
 import MeetingDetail from "@/pages/MeetingDetail";
 
+import Stats from "@/pages/Stats";
+import Coverage from "@/pages/Coverage";
+import Polls from "@/pages/Polls";
+
 import MemberPortalProfile from "@/pages/portal/MemberPortalProfile";
 import MemberPortalGrievances from "@/pages/portal/MemberPortalGrievances";
 import MemberPortalBulletins from "@/pages/portal/MemberPortalBulletins";
@@ -102,6 +106,10 @@ function StewardRouter() {
       <Route path="/assistant" component={CbaAssistant} />
 
       <Route path="/admin" component={Admin} />
+
+      <Route path="/stats" component={Stats} />
+      <Route path="/coverage" component={Coverage} />
+      <Route path="/polls" component={Polls} />
 
       <Route component={NotFound} />
     </Switch>

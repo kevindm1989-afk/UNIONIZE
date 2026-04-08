@@ -12,6 +12,8 @@ const ALLOWED_KEYS = [
   "grievance_deadline_step_3",
   "grievance_deadline_step_4",
   "grievance_deadline_step_5",
+  "cba_expiry_date",
+  "cba_name",
 ] as const;
 
 router.get("/", async (_req, res) => {

@@ -261,7 +261,8 @@ export default function Admin() {
     for (const key of ["admin_email", "portal_url",
       "grievance_deadline_step_1", "grievance_deadline_step_2",
       "grievance_deadline_step_3", "grievance_deadline_step_4",
-      "grievance_deadline_step_5"]) {
+      "grievance_deadline_step_5",
+      "cba_expiry_date", "cba_name"]) {
       init[key] = data[key]?.value ?? "";
     }
     setSettingsForm(init);
@@ -607,6 +608,26 @@ export default function Admin() {
                         onChange={(e) => settingField("portal_url", e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">Used for links in notification emails</p>
+                    </div>
+                    <div className="border-t border-border pt-4 mt-2 space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Collective Bargaining Agreement</p>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">Agreement Name</label>
+                        <Input
+                          placeholder="e.g. CUPE Local 1285 CBA 2023–2026"
+                          value={settingsForm["cba_name"] ?? ""}
+                          onChange={(e) => settingField("cba_name", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">Expiry Date</label>
+                        <Input
+                          type="date"
+                          value={settingsForm["cba_expiry_date"] ?? ""}
+                          onChange={(e) => settingField("cba_expiry_date", e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">Displays a countdown alert on the dashboard when expiry approaches</p>
+                      </div>
                     </div>
                   </div>
                 </div>

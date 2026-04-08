@@ -80,6 +80,8 @@ export async function ensureLocalSettingsTable(): Promise<void> {
       ["grievance_deadline_step_3", "15", "Days to respond at Step 3"],
       ["grievance_deadline_step_4", "20", "Days to respond at Step 4"],
       ["grievance_deadline_step_5", "30", "Days to respond at Arbitration (Step 5)"],
+      ["cba_expiry_date", "", "CBA / Contract expiry date (ISO 8601 date string, e.g. 2027-03-31)"],
+      ["cba_name", "Collective Bargaining Agreement", "Short name for the CBA"],
     ];
     for (const [key, value, description] of defaults) {
       await client.query(
@@ -314,6 +316,173 @@ export async function ensureVapidKeys(): Promise<void> {
         [keys.publicKey, keys.privateKey]
       );
       logger.info("VAPID keys generated and stored in local_settings");
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureAdvancedFeatureTables(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    // Case Journal
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS case_journal_entries (
+        id SERIAL PRIMARY KEY,
+        grievance_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        author_name TEXT,
+        entry_type TEXT NOT NULL DEFAULT 'note',
+        content TEXT NOT NULL,
+        is_private BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_case_journal_grievance ON case_journal_entries (grievance_id);`);
+
+    // Grievance Templates
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS grievance_templates (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        violation_type TEXT NOT NULL DEFAULT 'other',
+        description_template TEXT NOT NULL,
+        contract_article TEXT,
+        default_step INTEGER NOT NULL DEFAULT 1,
+        created_by INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE
+      );
+    `);
+
+    // Just Cause Assessments
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS just_cause_assessments (
+        id SERIAL PRIMARY KEY,
+        grievance_id INTEGER NOT NULL UNIQUE,
+        assessed_by INTEGER NOT NULL,
+        assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        adequate_notice BOOLEAN NOT NULL DEFAULT FALSE,
+        reasonable_rule BOOLEAN NOT NULL DEFAULT FALSE,
+        investigation_conducted BOOLEAN NOT NULL DEFAULT FALSE,
+        investigation_fair BOOLEAN NOT NULL DEFAULT FALSE,
+        proof_sufficient BOOLEAN NOT NULL DEFAULT FALSE,
+        penalty_consistent BOOLEAN NOT NULL DEFAULT FALSE,
+        penalty_progressive BOOLEAN NOT NULL DEFAULT FALSE,
+        notes TEXT
+      );
+    `);
+
+    // Member Communication Log
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS member_communication_log (
+        id SERIAL PRIMARY KEY,
+        grievance_id INTEGER NOT NULL,
+        member_id INTEGER,
+        logged_by INTEGER NOT NULL,
+        logged_by_name TEXT,
+        contact_method TEXT NOT NULL DEFAULT 'in_person',
+        summary TEXT NOT NULL,
+        contact_date DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_comm_log_grievance ON member_communication_log (grievance_id);`);
+
+    // Discipline Records
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS discipline_records (
+        id SERIAL PRIMARY KEY,
+        member_id INTEGER NOT NULL,
+        discipline_type TEXT NOT NULL DEFAULT 'verbal_warning',
+        incident_date DATE NOT NULL,
+        issued_date DATE NOT NULL,
+        description TEXT NOT NULL,
+        response_filed BOOLEAN NOT NULL DEFAULT FALSE,
+        grievance_id INTEGER,
+        created_by INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_discipline_member ON discipline_records (member_id);`);
+
+    // Steward Coverage
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS steward_coverage (
+        id SERIAL PRIMARY KEY,
+        steward_id INTEGER NOT NULL,
+        department TEXT NOT NULL,
+        shift TEXT NOT NULL DEFAULT 'days',
+        area_notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // Polls
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS polls (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        poll_type TEXT NOT NULL DEFAULT 'yes_no',
+        options JSONB NOT NULL DEFAULT '[]',
+        starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ends_at TIMESTAMPTZ NOT NULL,
+        created_by INTEGER,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        target_role TEXT NOT NULL DEFAULT 'all',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS poll_responses (
+        id SERIAL PRIMARY KEY,
+        poll_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        response TEXT NOT NULL,
+        responded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (poll_id, user_id)
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_responses_poll ON poll_responses (poll_id);`);
+
+    // Onboarding Checklists
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS onboarding_checklists (
+        id SERIAL PRIMARY KEY,
+        member_id INTEGER NOT NULL UNIQUE,
+        created_by INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        card_signed BOOLEAN NOT NULL DEFAULT FALSE,
+        dues_explained BOOLEAN NOT NULL DEFAULT FALSE,
+        cba_provided BOOLEAN NOT NULL DEFAULT FALSE,
+        steward_introduced BOOLEAN NOT NULL DEFAULT FALSE,
+        rights_explained BOOLEAN NOT NULL DEFAULT FALSE,
+        benefits_explained BOOLEAN NOT NULL DEFAULT FALSE,
+        completed_at TIMESTAMPTZ
+      );
+    `);
+
+    // Seed starter grievance templates if none exist
+    const { rowCount } = await client.query(`SELECT 1 FROM grievance_templates LIMIT 1`);
+    if (!rowCount) {
+      const starters = [
+        ["Unjust Discipline", "discipline", "Management has imposed discipline without just cause. The employee was issued [type of discipline] on [date] for alleged [reason]. The discipline is not supported by the facts and violates the collective agreement.", "Article 7 — Discipline", 1],
+        ["Seniority Bypass", "seniority_bypass", "Management failed to follow seniority provisions when filling [position/overtime/shift]. Senior employee [name] was bypassed in favour of [junior employee] without a valid contractual reason.", "Article 14 — Seniority", 1],
+        ["Scheduling Violation", "scheduling", "The Employer violated the scheduling provisions of the collective agreement when [describe the violation]. The schedule change/assignment was made without proper notice and contrary to established practice.", "Article 15 — Hours of Work", 1],
+        ["Wage Discrepancy", "wages", "The Employer failed to properly compensate the employee for [work performed]. The employee is entitled to [rate/premium] pursuant to the collective agreement but was paid only [amount/rate paid].", "Article 18 — Wages and Classifications", 1],
+        ["Harassment/Bullying", "harassment", "The employee has been subjected to workplace harassment and/or bullying by [management/co-worker] contrary to the collective agreement's harassment provisions. The conduct includes [describe].", "Article 9 — Non-Discrimination and Harassment", 1],
+        ["Failure to Accommodate", "benefits", "The Employer has failed to accommodate the employee's [disability/medical/religious] needs to the point of undue hardship as required by the collective agreement and applicable human rights legislation.", "Article 9 — Non-Discrimination", 1],
+      ];
+      for (const [title, vtype, tmpl, article, step] of starters) {
+        await client.query(
+          `INSERT INTO grievance_templates (title, violation_type, description_template, contract_article, default_step) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+          [title, vtype, tmpl, article, step]
+        );
+      }
+      logger.info("Grievance starter templates seeded");
     }
   } finally {
     client.release();

@@ -12,7 +12,9 @@ import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -24,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Phone, Mail, Building, Briefcase, Calendar,
   FileText, ChevronLeft, ArrowRight, Pencil, Trash2, Loader2,
-  Paperclip, Download, Upload, X,
+  Paperclip, Download, Upload, X, AlertOctagon, ClipboardCheck, Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,66 @@ import { cn } from "@/lib/utils";
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type MemberFileCategory = "general" | "discipline" | "grievance";
+
+interface DisciplineRecord {
+  id: number;
+  memberId: number;
+  disciplineType: string;
+  incidentDate: string;
+  issuedDate: string;
+  description: string;
+  responseFiled: boolean;
+  grievanceId: number | null;
+  createdAt: string;
+}
+
+interface OnboardingChecklist {
+  id: number;
+  memberId: number;
+  cardSigned: boolean;
+  duesExplained: boolean;
+  cbaProvided: boolean;
+  stewardIntroduced: boolean;
+  rightsExplained: boolean;
+  benefitsExplained: boolean;
+  completedAt: string | null;
+  completedCount: number;
+  total: number;
+  isComplete: boolean;
+}
+
+const fetchJson = async (url: string, opts?: RequestInit) => {
+  const res = await fetch(url, { credentials: "include", ...opts });
+  if (!res.ok) throw new Error("Request failed");
+  return res.json();
+};
+
+const DISCIPLINE_TYPE_LABELS: Record<string, string> = {
+  verbal_warning: "Verbal Warning",
+  written_warning: "Written Warning",
+  suspension_paid: "Suspension (Paid)",
+  suspension_unpaid: "Suspension (Unpaid)",
+  termination: "Termination",
+  other: "Other",
+};
+
+const DISCIPLINE_COLORS: Record<string, string> = {
+  verbal_warning: "bg-amber-100 text-amber-800 border-amber-200",
+  written_warning: "bg-orange-100 text-orange-800 border-orange-200",
+  suspension_paid: "bg-red-100 text-red-800 border-red-200",
+  suspension_unpaid: "bg-red-200 text-red-900 border-red-300",
+  termination: "bg-gray-900 text-white border-gray-900",
+  other: "bg-gray-100 text-gray-700 border-gray-200",
+};
+
+const ONBOARDING_ITEMS: Array<{ key: keyof OnboardingChecklist; label: string; description: string }> = [
+  { key: "cardSigned", label: "Membership Card Signed", description: "Member has signed their union membership card" },
+  { key: "duesExplained", label: "Dues Explained", description: "Member understands dues structure and payment" },
+  { key: "cbaProvided", label: "CBA Provided", description: "Member received a copy of the collective agreement" },
+  { key: "stewardIntroduced", label: "Steward Introduced", description: "Member has met their shop steward" },
+  { key: "rightsExplained", label: "Rights Explained", description: "Member understands their workplace rights" },
+  { key: "benefitsExplained", label: "Benefits Explained", description: "Member understands their benefits coverage" },
+];
 
 interface MemberFile {
   id: number;
@@ -117,6 +179,13 @@ export default function MemberDetail() {
   const [activeCategory, setActiveCategory] = useState<MemberFileCategory | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Discipline state
+  const [showAddDiscipline, setShowAddDiscipline] = useState(false);
+  const [newDiscType, setNewDiscType] = useState("verbal_warning");
+  const [newDiscIncidentDate, setNewDiscIncidentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newDiscIssuedDate, setNewDiscIssuedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newDiscDescription, setNewDiscDescription] = useState("");
+
   const { data: member, isLoading } = useGetMember(id, {
     query: { enabled: !!id, queryKey: getGetMemberQueryKey(id) },
   });
@@ -149,6 +218,45 @@ export default function MemberDetail() {
       if (!res.ok) throw new Error("Failed to delete file");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: filesQueryKey }),
+  });
+
+  // ── Discipline queries ──
+  const disciplineKey = ["member-discipline", id];
+  const { data: disciplineRecords = [], isLoading: isLoadingDiscipline } = useQuery<DisciplineRecord[]>({
+    queryKey: disciplineKey,
+    queryFn: () => fetchJson(`/api/members/${id}/discipline`),
+    enabled: !!id,
+  });
+
+  const addDisciplineMutation = useMutation({
+    mutationFn: (body: object) => fetchJson(`/api/members/${id}/discipline`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: disciplineKey });
+      setShowAddDiscipline(false);
+      setNewDiscType("verbal_warning"); setNewDiscDescription(""); setNewDiscIncidentDate(new Date().toISOString().split("T")[0]); setNewDiscIssuedDate(new Date().toISOString().split("T")[0]);
+    },
+  });
+
+  const deleteDisciplineMutation = useMutation({
+    mutationFn: (recordId: number) => fetch(`/api/members/${id}/discipline/${recordId}`, { method: "DELETE", credentials: "include" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: disciplineKey }),
+  });
+
+  // ── Onboarding queries ──
+  const onboardingKey = ["member-onboarding", id];
+  const { data: onboarding } = useQuery<OnboardingChecklist | null>({
+    queryKey: onboardingKey,
+    queryFn: () => fetchJson(`/api/members/${id}/onboarding`),
+    enabled: !!id,
+  });
+
+  const updateOnboardingMutation = useMutation({
+    mutationFn: (body: object) => fetchJson(`/api/members/${id}/onboarding`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: onboardingKey }),
   });
 
   // Populate form fields whenever member loads or edit sheet opens
@@ -563,6 +671,110 @@ export default function MemberDetail() {
           )}
         </section>
 
+        {/* ─── Discipline History ──────────────────────────────────────── */}
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <AlertOctagon className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Discipline History {disciplineRecords.length > 0 && `(${disciplineRecords.length})`}
+              </p>
+            </div>
+            {can("members.edit") && (
+              <button className="text-xs font-bold text-primary uppercase tracking-wider" onClick={() => setShowAddDiscipline(true)}>
+                + Add
+              </button>
+            )}
+          </div>
+
+          {isLoadingDiscipline ? (
+            <Skeleton className="h-16 rounded-xl" />
+          ) : disciplineRecords.length === 0 ? (
+            <div className="bg-card border border-dashed border-border rounded-xl p-5 text-center">
+              <AlertOctagon className="w-7 h-7 mx-auto mb-1.5 text-muted-foreground opacity-20" />
+              <p className="text-sm text-muted-foreground">No discipline records on file</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {disciplineRecords.map((r) => (
+                <div key={r.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border", DISCIPLINE_COLORS[r.disciplineType] ?? DISCIPLINE_COLORS.other)}>
+                        {DISCIPLINE_TYPE_LABELS[r.disciplineType] ?? r.disciplineType}
+                      </span>
+                      {r.responseFiled && (
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-green-100 text-green-700 border-green-200">
+                          Response Filed
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-foreground leading-snug">{r.description}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Incident: {r.incidentDate} · Issued: {r.issuedDate}
+                    </p>
+                    {r.grievanceId && (
+                      <Link href={`/grievances/${r.grievanceId}`} className="text-[11px] text-primary font-semibold mt-0.5 block">
+                        → Linked Grievance #{r.grievanceId}
+                      </Link>
+                    )}
+                  </div>
+                  {can("members.edit") && (
+                    <button onClick={() => deleteDisciplineMutation.mutate(r.id)} className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 mt-0.5">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ─── Onboarding Checklist ────────────────────────────────────── */}
+        <section className="space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Onboarding Checklist
+              {onboarding && ` (${onboarding.completedCount}/${onboarding.total})`}
+            </p>
+            {onboarding?.isComplete && (
+              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-green-100 text-green-700 border-green-200">Complete</span>
+            )}
+          </div>
+
+          {onboarding && onboarding.completedCount > 0 && (
+            <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className={cn("h-1.5 rounded-full transition-all", onboarding.isComplete ? "bg-green-500" : "bg-primary")}
+                style={{ width: `${(onboarding.completedCount / onboarding.total) * 100}%` }}
+              />
+            </div>
+          )}
+
+          <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
+            {ONBOARDING_ITEMS.map((item) => {
+              const checked = Boolean(onboarding && (onboarding as Record<string, unknown>)[item.key]);
+              return (
+                <div
+                  key={item.key}
+                  className={cn("flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors", can("members.edit") ? "" : "pointer-events-none")}
+                  onClick={() => {
+                    if (!can("members.edit")) return;
+                    updateOnboardingMutation.mutate({ [item.key]: !checked });
+                  }}
+                >
+                  <Checkbox checked={checked} readOnly className="mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className={cn("text-sm font-semibold", checked ? "text-muted-foreground line-through" : "text-foreground")}>{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Danger zone — remove member */}
         {member && can("members.edit") && (
           <div className="pt-2">
@@ -914,6 +1126,60 @@ export default function MemberDetail() {
                 disabled={uploading || !uploadFile}
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Add Discipline Sheet */}
+      <Sheet open={showAddDiscipline} onOpenChange={setShowAddDiscipline}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85dvh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Add Discipline Record</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-4 pb-8">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Discipline Type</label>
+              <Select value={newDiscType} onValueChange={setNewDiscType}>
+                <SelectTrigger className="h-12 rounded-xl bg-card"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="verbal_warning">Verbal Warning</SelectItem>
+                  <SelectItem value="written_warning">Written Warning</SelectItem>
+                  <SelectItem value="suspension_paid">Suspension (Paid)</SelectItem>
+                  <SelectItem value="suspension_unpaid">Suspension (Unpaid)</SelectItem>
+                  <SelectItem value="termination">Termination</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Incident Date</label>
+                <Input type="date" value={newDiscIncidentDate} onChange={(e) => setNewDiscIncidentDate(e.target.value)} className="h-12 rounded-xl bg-card" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Issued Date</label>
+                <Input type="date" value={newDiscIssuedDate} onChange={(e) => setNewDiscIssuedDate(e.target.value)} className="h-12 rounded-xl bg-card" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+              <Textarea value={newDiscDescription} onChange={(e) => setNewDiscDescription(e.target.value)} placeholder="Describe the disciplinary action..." className="min-h-[80px] rounded-xl bg-card resize-none" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setShowAddDiscipline(false)}>Cancel</Button>
+              <Button
+                className="flex-1 h-12 rounded-xl font-bold"
+                disabled={!newDiscDescription.trim() || addDisciplineMutation.isPending}
+                onClick={() => addDisciplineMutation.mutate({
+                  disciplineType: newDiscType,
+                  incidentDate: newDiscIncidentDate,
+                  issuedDate: newDiscIssuedDate,
+                  description: newDiscDescription.trim(),
+                })}
+              >
+                {addDisciplineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Record"}
               </Button>
             </div>
           </div>

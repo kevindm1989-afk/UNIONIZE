@@ -23,6 +23,7 @@ import {
   ensurePushSubscriptionsTable,
   ensureNotificationPreferences,
   ensureVapidKeys,
+  ensureAdvancedFeatureTables,
   seedDefaultPermissions,
 } from "./lib/seedAdmin";
 const PgStore = connectPgSimple(session);
@@ -87,6 +88,7 @@ ensureSessionTable()
   .then(() => ensurePushSubscriptionsTable())
   .then(() => ensureNotificationPreferences())
   .then(() => ensureVapidKeys())
+  .then(() => ensureAdvancedFeatureTables())
   .then(() => seedAdminUser())
   .then(() => seedDefaultPermissions())
   .catch((err) => logger.error({ err }, "Startup tasks failed"));

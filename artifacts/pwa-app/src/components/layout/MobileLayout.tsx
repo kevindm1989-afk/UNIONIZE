@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff, Sun, Moon, BarChart2, MapPin, Vote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, usePermissions } from "@/App";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useTheme } from "@/hooks/useTheme";
 
 export function MobileLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -11,6 +12,17 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
   const { roleLabel, can } = usePermissions();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications();
+  const { isDark, toggle } = useTheme();
+
+  // Apply theme on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
 
   const getSection = () => {
     if (location.startsWith("/members")) return "members";
@@ -19,6 +31,9 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
     if (location.startsWith("/documents")) return "documents";
     if (location.startsWith("/assistant")) return "assistant";
     if (location.startsWith("/meetings")) return "meetings";
+    if (location.startsWith("/stats")) return "stats";
+    if (location.startsWith("/coverage")) return "coverage";
+    if (location.startsWith("/polls")) return "polls";
     return "dashboard";
   };
 
@@ -68,7 +83,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowUserMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-xl shadow-xl min-w-[160px] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-xl shadow-xl min-w-[180px] overflow-hidden">
                   <div className="px-3 py-2.5 border-b border-border">
                     <p className="text-xs font-bold text-foreground">{user.displayName}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">@{user.username}</p>
@@ -76,42 +91,88 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                       {roleLabel(user.role)}
                     </span>
                   </div>
-                  {(user.role === "admin" || user.role === "chair") && (
+
+                  {/* Dark mode toggle */}
+                  <button
+                    onClick={() => { toggle(); setShowUserMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    {isDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-blue-500" />}
+                    {isDark ? "Light Mode" : "Dark Mode"}
+                  </button>
+
+                  {/* Quick links for advanced features */}
+                  <div className="border-t border-border">
                     <Link
-                      href="/admin"
+                      href="/stats"
                       onClick={() => setShowUserMenu(false)}
                       className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
                     >
-                      <ShieldCheck className="w-4 h-4 text-primary" />
-                      Admin Panel
+                      <BarChart2 className="w-4 h-4 text-primary" />
+                      Grievance Stats
                     </Link>
-                  )}
-                  {pushStatus !== "unsupported" && pushStatus !== "denied" && (
-                    <button
-                      onClick={async () => {
-                        setShowUserMenu(false);
-                        if (pushStatus === "subscribed") {
-                          await unsubscribe();
-                        } else {
-                          await subscribe();
-                        }
-                      }}
+                    <Link
+                      href="/coverage"
+                      onClick={() => setShowUserMenu(false)}
                       className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
                     >
-                      {pushStatus === "subscribed" ? (
-                        <><BellOff className="w-4 h-4 text-muted-foreground" />Disable Notifications</>
-                      ) : (
-                        <><BellRing className="w-4 h-4 text-primary" />Enable Notifications</>
-                      )}
-                    </button>
+                      <MapPin className="w-4 h-4 text-primary" />
+                      Coverage Map
+                    </Link>
+                    <Link
+                      href="/polls"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <Vote className="w-4 h-4 text-primary" />
+                      Polls
+                    </Link>
+                  </div>
+
+                  {(user.role === "admin" || user.role === "chair") && (
+                    <div className="border-t border-border">
+                      <Link
+                        href="/admin"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-primary" />
+                        Admin Panel
+                      </Link>
+                    </div>
                   )}
-                  <button
-                    onClick={() => { setShowUserMenu(false); logout(); }}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
+
+                  {pushStatus !== "unsupported" && pushStatus !== "denied" && (
+                    <div className="border-t border-border">
+                      <button
+                        onClick={async () => {
+                          setShowUserMenu(false);
+                          if (pushStatus === "subscribed") {
+                            await unsubscribe();
+                          } else {
+                            await subscribe();
+                          }
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        {pushStatus === "subscribed" ? (
+                          <><BellOff className="w-4 h-4 text-muted-foreground" />Disable Notifications</>
+                        ) : (
+                          <><BellRing className="w-4 h-4 text-primary" />Enable Notifications</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="border-t border-border">
+                    <button
+                      onClick={() => { setShowUserMenu(false); logout(); }}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
               </>
             )}

@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, FileText, AlertTriangle, Clock, ChevronRight, Bell, CalendarClock } from "lucide-react";
+import { Users, FileText, AlertTriangle, Clock, ChevronRight, Bell, CalendarClock, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
@@ -49,6 +49,12 @@ export default function Dashboard() {
     queryKey: ["dashboard-upcoming"],
     queryFn: () => fetch("/api/dashboard/upcoming", { credentials: "include" }).then((r) => r.json()),
     staleTime: 60_000,
+  });
+
+  const { data: cbaSettings } = useQuery<{ cba_expiry_date?: string; cba_name?: string }>({
+    queryKey: ["cba-settings"],
+    queryFn: () => fetch("/api/cba-info", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 5 * 60_000,
   });
 
   const today = new Date();
@@ -135,6 +141,49 @@ export default function Dashboard() {
             </>
           )}
         </section>
+
+        {/* CBA Expiry Widget */}
+        {cbaSettings?.cba_expiry_date && (() => {
+          const expiryDate = parseISO(cbaSettings.cba_expiry_date);
+          const daysLeft = differenceInCalendarDays(expiryDate, today);
+          const isExpired = daysLeft < 0;
+          const isUrgent = daysLeft <= 30 && !isExpired;
+          const isWarning = daysLeft <= 90 && daysLeft > 30;
+          const colorClass = isExpired
+            ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/30"
+            : isUrgent
+              ? "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/30"
+              : isWarning
+                ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/30"
+                : "bg-card border-border";
+          const iconColor = isExpired ? "text-red-500" : isUrgent ? "text-orange-500" : isWarning ? "text-amber-500" : "text-muted-foreground";
+          const labelColor = isExpired ? "text-red-700 dark:text-red-400" : isUrgent ? "text-orange-700 dark:text-orange-400" : isWarning ? "text-amber-700 dark:text-amber-400" : "text-foreground";
+          return (
+            <div className={cn("rounded-xl border p-4 flex items-center justify-between gap-4", colorClass)}>
+              <div className="flex items-center gap-3">
+                <ShieldAlert className={cn("w-8 h-8 flex-shrink-0", iconColor)} />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {cbaSettings.cba_name ?? "Collective Agreement"}
+                  </p>
+                  <p className={cn("text-sm font-bold", labelColor)}>
+                    {isExpired
+                      ? `Expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? "s" : ""} ago`
+                      : `Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{format(expiryDate, "MMMM d, yyyy")}</p>
+                </div>
+              </div>
+              {(isExpired || isUrgent || isWarning) && (
+                <Link href="/admin">
+                  <div className={cn("text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border flex-shrink-0", isExpired ? "border-red-300 text-red-700 bg-red-100 dark:text-red-400 dark:border-red-800 dark:bg-red-900/30" : isUrgent ? "border-orange-300 text-orange-700 bg-orange-100 dark:text-orange-400 dark:border-orange-800 dark:bg-orange-900/30" : "border-amber-300 text-amber-700 bg-amber-100 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-900/30")}>
+                    Update
+                  </div>
+                </Link>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Due Soon */}
         {(isLoadingUpcoming || upcoming.length > 0) && (

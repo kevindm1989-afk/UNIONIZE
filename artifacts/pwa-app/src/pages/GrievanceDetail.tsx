@@ -17,12 +17,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, Trash2, MessageSquare, ArrowRightCircle, Layers, Plus, Loader2 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ChevronLeft, Trash2, MessageSquare, ArrowRightCircle, Layers, Plus, Loader2,
+  BookOpen, ChevronDown, ChevronUp, Phone, ShieldCheck, Users,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +45,40 @@ interface GrievanceNote {
   content: string;
   noteType: string;
   createdAt: string;
+}
+
+interface JournalEntry {
+  id: number;
+  grievanceId: number;
+  authorId: number;
+  authorName: string | null;
+  entryType: string;
+  content: string;
+  isPrivate: boolean;
+  createdAt: string;
+}
+
+interface JustCause {
+  id: number;
+  grievanceId: number;
+  assessedBy: number;
+  assessedAt: string;
+  adequateNotice: boolean;
+  reasonableRule: boolean;
+  investigationConducted: boolean;
+  investigationFair: boolean;
+  proofSufficient: boolean;
+  penaltyConsistent: boolean;
+  penaltyProgressive: boolean;
+  notes: string | null;
+}
+
+interface CommLog {
+  id: number;
+  loggedByName: string | null;
+  contactMethod: string;
+  summary: string;
+  contactDate: string;
 }
 
 function renderContent(text: string) {
@@ -64,6 +101,45 @@ const fetchJson = async (url: string, opts?: RequestInit) => {
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 };
+
+const JUST_CAUSE_FIELDS: Array<{ key: keyof JustCause; label: string; description: string }> = [
+  { key: "adequateNotice", label: "Adequate Notice", description: "Was the employee aware the conduct was prohibited?" },
+  { key: "reasonableRule", label: "Reasonable Rule", description: "Is the rule/standard reasonably related to job performance?" },
+  { key: "investigationConducted", label: "Investigation Conducted", description: "Was a fair investigation conducted before discipline?" },
+  { key: "investigationFair", label: "Investigation Fair", description: "Was the investigation objective and thorough?" },
+  { key: "proofSufficient", label: "Proof Sufficient", description: "Is there substantial evidence to support the charge?" },
+  { key: "penaltyConsistent", label: "Penalty Consistent", description: "Is the penalty consistent with similar past cases?" },
+  { key: "penaltyProgressive", label: "Progressive Discipline", description: "Was progressive discipline applied before termination?" },
+];
+
+const METHOD_LABELS: Record<string, string> = {
+  in_person: "In Person", phone: "Phone", text: "Text", email: "Email", voicemail: "Voicemail", no_answer: "No Answer",
+};
+const ENTRY_TYPE_LABELS: Record<string, string> = {
+  note: "Note", call: "Call", meeting: "Meeting", email: "Email", management_contact: "Mgmt Contact",
+};
+
+// ─── Collapsible Panel ────────────────────────────────────────────────────────
+function Panel({ title, icon, children, defaultOpen = false }: {
+  title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="border-t border-border">{children}</div>}
+    </div>
+  );
+}
 
 export default function GrievanceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -91,6 +167,15 @@ export default function GrievanceDetail() {
 
   const [newNote, setNewNote] = useState("");
 
+  // Journal state
+  const [newJournalContent, setNewJournalContent] = useState("");
+  const [newJournalType, setNewJournalType] = useState("note");
+
+  // Communication log state
+  const [newCommSummary, setNewCommSummary] = useState("");
+  const [newCommMethod, setNewCommMethod] = useState("in_person");
+  const [newCommDate, setNewCommDate] = useState(new Date().toISOString().split("T")[0]);
+
   useEffect(() => {
     if (grievance && !initialized.current) {
       initialized.current = true;
@@ -107,10 +192,31 @@ export default function GrievanceDetail() {
   }, [grievance]);
 
   const notesKey = ["grievance-notes", grievanceId];
+  const journalKey = ["grievance-journal", grievanceId];
+  const justCauseKey = ["grievance-just-cause", grievanceId];
+  const commLogKey = ["grievance-comm-log", grievanceId];
 
   const { data: activityNotes = [], refetch: refetchNotes } = useQuery<GrievanceNote[]>({
     queryKey: notesKey,
     queryFn: () => fetchJson(`/api/grievances/${grievanceId}/notes`),
+    enabled: !!grievanceId,
+  });
+
+  const { data: journalEntries = [], refetch: refetchJournal } = useQuery<JournalEntry[]>({
+    queryKey: journalKey,
+    queryFn: () => fetchJson(`/api/grievances/${grievanceId}/journal`),
+    enabled: !!grievanceId,
+  });
+
+  const { data: justCause, refetch: refetchJustCause } = useQuery<JustCause | null>({
+    queryKey: justCauseKey,
+    queryFn: () => fetchJson(`/api/grievances/${grievanceId}/just-cause`),
+    enabled: !!grievanceId,
+  });
+
+  const { data: commLog = [], refetch: refetchCommLog } = useQuery<CommLog[]>({
+    queryKey: commLogKey,
+    queryFn: () => fetchJson(`/api/grievances/${grievanceId}/communications`),
     enabled: !!grievanceId,
   });
 
@@ -121,10 +227,42 @@ export default function GrievanceDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       }),
-    onSuccess: () => {
-      setNewNote("");
-      refetchNotes();
-    },
+    onSuccess: () => { setNewNote(""); refetchNotes(); },
+  });
+
+  const addJournalEntry = useMutation({
+    mutationFn: () =>
+      fetchJson(`/api/grievances/${grievanceId}/journal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newJournalContent.trim(), entryType: newJournalType }),
+      }),
+    onSuccess: () => { setNewJournalContent(""); refetchJournal(); },
+  });
+
+  const saveJustCause = useMutation({
+    mutationFn: (data: Partial<JustCause>) =>
+      fetchJson(`/api/grievances/${grievanceId}/just-cause`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => refetchJustCause(),
+  });
+
+  const addCommLog = useMutation({
+    mutationFn: () =>
+      fetchJson(`/api/grievances/${grievanceId}/communications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summary: newCommSummary.trim(),
+          contactMethod: newCommMethod,
+          contactDate: newCommDate,
+          memberId: (grievance as any)?.memberId ?? null,
+        }),
+      }),
+    onSuccess: () => { setNewCommSummary(""); refetchCommLog(); },
   });
 
   const invalidateAll = () => {
@@ -156,6 +294,13 @@ export default function GrievanceDetail() {
     });
   };
 
+  // Just cause toggle helper
+  const toggleJustCause = (field: keyof JustCause) => {
+    const current = justCause ?? {};
+    const newVal = !((current as Record<string, unknown>)[field]);
+    saveJustCause.mutate({ ...current, [field]: newVal } as Partial<JustCause>);
+  };
+
   if (isLoading) {
     return (
       <MobileLayout>
@@ -169,6 +314,10 @@ export default function GrievanceDetail() {
   }
 
   if (!grievance) return null;
+
+  const jcScore = justCause
+    ? JUST_CAUSE_FIELDS.filter((f) => Boolean((justCause as Record<string, unknown>)[f.key])).length
+    : 0;
 
   return (
     <MobileLayout>
@@ -356,6 +505,172 @@ export default function GrievanceDetail() {
               </div>
             )}
           </div>
+
+          {/* ── Steward Case Journal ───────────────────────────────────────── */}
+          <Panel title={`Steward Journal (${journalEntries.length})`} icon={<BookOpen className="w-4 h-4 text-muted-foreground" />}>
+            <div className="p-4 space-y-3">
+              <div className="flex gap-2">
+                <Select value={newJournalType} onValueChange={setNewJournalType}>
+                  <SelectTrigger className="h-9 rounded-xl bg-background text-xs w-36 flex-shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="note">Note</SelectItem>
+                    <SelectItem value="call">Call</SelectItem>
+                    <SelectItem value="meeting">Meeting</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="management_contact">Mgmt Contact</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Textarea
+                  value={newJournalContent}
+                  onChange={(e) => setNewJournalContent(e.target.value)}
+                  placeholder="Add a private journal entry…"
+                  className="min-h-[60px] rounded-xl bg-background resize-none text-sm flex-1"
+                />
+                <Button
+                  size="sm"
+                  className="self-end rounded-xl h-9 w-9 p-0 flex-shrink-0"
+                  disabled={!newJournalContent.trim() || addJournalEntry.isPending}
+                  onClick={() => { if (newJournalContent.trim()) addJournalEntry.mutate(); }}
+                >
+                  {addJournalEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+              {journalEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">No journal entries yet. These are private steward notes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {journalEntries.map((e) => (
+                    <div key={e.id} className="p-3 rounded-xl bg-background border border-border space-y-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ENTRY_TYPE_LABELS[e.entryType] ?? e.entryType}</span>
+                          <span className="text-xs font-semibold">{e.authorName ?? "Steward"}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{format(parseISO(e.createdAt), "MMM d, h:mm a")}</span>
+                      </div>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{e.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Panel>
+
+          {/* ── Just Cause Assessment ──────────────────────────────────────── */}
+          <Panel
+            title={justCause ? `Just Cause Assessment (${jcScore}/7)` : "Just Cause Assessment"}
+            icon={<ShieldCheck className="w-4 h-4 text-muted-foreground" />}
+          >
+            <div className="p-4 space-y-3">
+              {jcScore > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className={cn("h-2 rounded-full transition-all", jcScore >= 6 ? "bg-green-500" : jcScore >= 4 ? "bg-amber-500" : "bg-red-500")}
+                      style={{ width: `${(jcScore / 7) * 100}%` }}
+                    />
+                  </div>
+                  <span className={cn("text-xs font-bold", jcScore >= 6 ? "text-green-600" : jcScore >= 4 ? "text-amber-600" : "text-red-600")}>
+                    {jcScore}/7
+                  </span>
+                </div>
+              )}
+              <div className="space-y-2.5">
+                {JUST_CAUSE_FIELDS.map((f) => {
+                  const checked = Boolean(justCause && (justCause as Record<string, unknown>)[f.key]);
+                  return (
+                    <div
+                      key={f.key}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-background border border-border cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => toggleJustCause(f.key)}
+                    >
+                      <Checkbox checked={checked} readOnly className="mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold">{f.label}</p>
+                        <p className="text-xs text-muted-foreground">{f.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {justCause && (
+                <div className="space-y-2 pt-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assessment Notes</label>
+                  <Textarea
+                    defaultValue={justCause.notes ?? ""}
+                    placeholder="Additional notes on just cause analysis..."
+                    className="min-h-[60px] rounded-xl bg-background resize-none text-sm"
+                    onBlur={(e) => {
+                      if (e.target.value !== (justCause.notes ?? "")) {
+                        saveJustCause.mutate({ ...justCause, notes: e.target.value || null });
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </Panel>
+
+          {/* ── Member Communication Log ───────────────────────────────────── */}
+          <Panel title={`Contact Log (${commLog.length})`} icon={<Users className="w-4 h-4 text-muted-foreground" />}>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={newCommMethod} onValueChange={setNewCommMethod}>
+                  <SelectTrigger className="h-9 rounded-xl bg-background text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="in_person">In Person</SelectItem>
+                    <SelectItem value="phone">Phone</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="voicemail">Voicemail</SelectItem>
+                    <SelectItem value="no_answer">No Answer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="date" value={newCommDate} onChange={(e) => setNewCommDate(e.target.value)} className="h-9 rounded-xl bg-background text-xs" />
+              </div>
+              <div className="flex gap-2">
+                <Textarea
+                  value={newCommSummary}
+                  onChange={(e) => setNewCommSummary(e.target.value)}
+                  placeholder="Brief summary of contact with member..."
+                  className="min-h-[60px] rounded-xl bg-background resize-none text-sm flex-1"
+                />
+                <Button
+                  size="sm"
+                  className="self-end rounded-xl h-9 w-9 p-0 flex-shrink-0"
+                  disabled={!newCommSummary.trim() || addCommLog.isPending}
+                  onClick={() => { if (newCommSummary.trim()) addCommLog.mutate(); }}
+                >
+                  {addCommLog.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+              {commLog.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">No contacts logged yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {commLog.map((c) => (
+                    <div key={c.id} className="p-3 rounded-xl bg-background border border-border space-y-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{METHOD_LABELS[c.contactMethod] ?? c.contactMethod}</span>
+                          <span className="text-xs font-semibold">{c.loggedByName ?? "Steward"}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{c.contactDate}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{c.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Panel>
 
           <div className="pt-2 text-center text-xs text-muted-foreground space-y-0.5 pb-6">
             <p>Filed {format(new Date(grievance.filedDate), "MMMM d, yyyy")}</p>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,14 +12,35 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetRecentActivityQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ChevronLeft, Loader2, LayoutTemplate } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+
+interface GrievanceTemplate {
+  id: number;
+  title: string;
+  violationType: string;
+  descriptionTemplate: string;
+  contractArticle: string | null;
+  defaultStep: number;
+}
+
+const VIOLATION_TYPE_COLORS: Record<string, string> = {
+  discipline: "bg-red-100 text-red-700 border-red-200",
+  seniority_bypass: "bg-purple-100 text-purple-700 border-purple-200",
+  scheduling: "bg-blue-100 text-blue-700 border-blue-200",
+  wages: "bg-green-100 text-green-700 border-green-200",
+  harassment: "bg-orange-100 text-orange-700 border-orange-200",
+  benefits: "bg-amber-100 text-amber-700 border-amber-200",
+  other: "bg-gray-100 text-gray-700 border-gray-200",
+};
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -38,6 +60,13 @@ export default function GrievanceCreate() {
   const queryClient = useQueryClient();
   const createGrievance = useCreateGrievance();
   const { data: members } = useListMembers();
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  const { data: templates = [] } = useQuery<GrievanceTemplate[]>({
+    queryKey: ["grievance-templates"],
+    queryFn: () => fetch("/api/grievance-templates", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 5 * 60_000,
+  });
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -56,6 +85,14 @@ export default function GrievanceCreate() {
       accommodationRequest: false,
     },
   });
+
+  const applyTemplate = (t: GrievanceTemplate) => {
+    form.setValue("title", t.title);
+    form.setValue("description", t.descriptionTemplate);
+    if (t.contractArticle) form.setValue("contractArticle", t.contractArticle);
+    form.setValue("step", String(t.defaultStep));
+    setShowTemplates(false);
+  };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createGrievance.mutate(
@@ -93,7 +130,13 @@ export default function GrievanceCreate() {
             <ChevronLeft className="w-6 h-6" />
           </Link>
           <span className="font-bold tracking-tight text-sm uppercase">File Grievance</span>
-          <div className="w-10" />
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/5"
+          >
+            <LayoutTemplate className="w-4 h-4" />
+            Templates
+          </button>
         </header>
 
         <div className="p-5 flex-1">
@@ -252,6 +295,44 @@ export default function GrievanceCreate() {
           </Form>
         </div>
       </div>
+
+      {/* Templates Sheet */}
+      <Sheet open={showTemplates} onOpenChange={setShowTemplates}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85dvh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Grievance Templates</SheetTitle>
+          </SheetHeader>
+          <p className="text-xs text-muted-foreground mt-1 mb-4">Select a template to pre-fill the form. You can edit after applying.</p>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No templates available.</p>
+          ) : (
+            <div className="space-y-2.5 pb-6">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => applyTemplate(t)}
+                  className="w-full text-left p-4 rounded-xl bg-card border border-border hover:bg-muted/50 active:scale-[0.98] transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-foreground">{t.title}</p>
+                      {t.contractArticle && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{t.contractArticle}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                        {t.descriptionTemplate}
+                      </p>
+                    </div>
+                    <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border flex-shrink-0 mt-0.5", VIOLATION_TYPE_COLORS[t.violationType] ?? VIOLATION_TYPE_COLORS.other)}>
+                      {t.violationType.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </MobileLayout>
   );
 }
