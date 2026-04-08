@@ -34,6 +34,11 @@ export const ListMembersResponseItem = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
+  seniorityDate: zod.coerce.date().nullish(),
+  duesStatus: zod.string().nullish(),
+  duesLastPaid: zod.coerce.date().nullish(),
+  shift: zod.string().nullish(),
+  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -54,6 +59,11 @@ export const CreateMemberBody = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean().default(createMemberBodyIsActiveDefault),
   notes: zod.string().nullish(),
+  seniorityDate: zod.string().nullish(),
+  duesStatus: zod.string().nullish(),
+  duesLastPaid: zod.string().nullish(),
+  shift: zod.string().nullish(),
+  classificationDate: zod.string().nullish(),
 });
 
 /**
@@ -74,6 +84,11 @@ export const GetMemberResponse = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
+  seniorityDate: zod.coerce.date().nullish(),
+  duesStatus: zod.string().nullish(),
+  duesLastPaid: zod.coerce.date().nullish(),
+  shift: zod.string().nullish(),
+  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -95,6 +110,11 @@ export const UpdateMemberBody = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean().optional(),
   notes: zod.string().nullish(),
+  seniorityDate: zod.string().nullish(),
+  duesStatus: zod.string().nullish(),
+  duesLastPaid: zod.string().nullish(),
+  shift: zod.string().nullish(),
+  classificationDate: zod.string().nullish(),
 });
 
 export const UpdateMemberResponse = zod.object({
@@ -108,6 +128,11 @@ export const UpdateMemberResponse = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
+  seniorityDate: zod.coerce.date().nullish(),
+  duesStatus: zod.string().nullish(),
+  duesLastPaid: zod.coerce.date().nullish(),
+  shift: zod.string().nullish(),
+  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -142,11 +167,13 @@ export const GetMemberGrievancesResponseItem = zod.object({
     "resolved",
     "withdrawn",
   ]),
+  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
+  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -187,11 +214,13 @@ export const ListGrievancesResponseItem = zod.object({
     "resolved",
     "withdrawn",
   ]),
+  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
+  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -221,6 +250,7 @@ export const CreateGrievanceBody = zod.object({
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
+  accommodationRequest: zod.boolean().optional(),
 });
 
 /**
@@ -246,11 +276,13 @@ export const GetGrievanceResponse = zod.object({
     "resolved",
     "withdrawn",
   ]),
+  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
+  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -282,6 +314,7 @@ export const UpdateGrievanceBody = zod.object({
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
+  accommodationRequest: zod.boolean().optional(),
 });
 
 export const UpdateGrievanceResponse = zod.object({
@@ -300,11 +333,13 @@ export const UpdateGrievanceResponse = zod.object({
     "resolved",
     "withdrawn",
   ]),
+  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
+  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -331,6 +366,8 @@ export const GetGrievancesSummaryResponse = zod.object({
   step2: zod.number(),
   step3: zod.number(),
   step4: zod.number(),
+  step5: zod.number().optional(),
+  accommodation: zod.number().optional(),
 });
 
 /**

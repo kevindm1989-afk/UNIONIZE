@@ -22,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ChevronLeft, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export default function GrievanceDetail() {
   const [status, setStatus] = useState("open");
   const [step, setStep] = useState("1");
   const [dueDate, setDueDate] = useState("");
+  const [accommodationRequest, setAccommodationRequest] = useState(false);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function GrievanceDetail() {
       setStatus(grievance.status);
       setStep(String(grievance.step));
       setDueDate(grievance.dueDate || "");
+      setAccommodationRequest(grievance.accommodationRequest ?? false);
     }
   }, [grievance]);
 
@@ -114,9 +117,16 @@ export default function GrievanceDetail() {
           </Link>
           <div className="text-center">
             <span className="font-bold text-xs tracking-wider uppercase block">{grievance.grievanceNumber}</span>
-            <span className={cn("text-[9px] uppercase font-bold px-2 py-0.5 rounded border", statusColors[grievance.status])}>
-              {grievance.status.replace(/_/g, " ")}
-            </span>
+            <div className="flex items-center gap-1 justify-center">
+              <span className={cn("text-[9px] uppercase font-bold px-2 py-0.5 rounded border", statusColors[grievance.status])}>
+                {grievance.status.replace(/_/g, " ")}
+              </span>
+              {grievance.isOverdue && (
+                <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">
+                  Overdue
+                </span>
+              )}
+            </div>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -169,6 +179,7 @@ export default function GrievanceDetail() {
                   <SelectItem value="2">Step 2</SelectItem>
                   <SelectItem value="3">Step 3</SelectItem>
                   <SelectItem value="4">Step 4</SelectItem>
+                  <SelectItem value="5">Step 5 — Arbitration</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -205,6 +216,21 @@ export default function GrievanceDetail() {
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
               onBlur={() => { if (notes !== (grievance.notes || "")) handleUpdate("notes", notes || null); }}
               placeholder="Witnesses, evidence, next steps..." className="min-h-[80px] rounded-xl bg-card resize-none" />
+          </div>
+
+          <div
+            className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border cursor-pointer"
+            onClick={() => {
+              const next = !accommodationRequest;
+              setAccommodationRequest(next);
+              handleUpdate("accommodationRequest", next);
+            }}
+          >
+            <Checkbox checked={accommodationRequest} readOnly />
+            <div>
+              <p className="text-sm font-semibold">ADA / Accommodation Request</p>
+              <p className="text-xs text-muted-foreground">Member has a disability accommodation involved</p>
+            </div>
           </div>
 
           {(status === "resolved" || status === "withdrawn") && (

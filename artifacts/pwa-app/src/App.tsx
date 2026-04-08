@@ -1,4 +1,5 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -155,6 +156,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <IdleLogout />
             <Router />
           </WouterRouter>
           <Toaster />
@@ -162,6 +164,17 @@ function App() {
       </QueryClientProvider>
     </AuthContext.Provider>
   );
+}
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+function IdleLogout() {
+  const { logout } = useAuth();
+  const handleIdle = useCallback(() => {
+    logout();
+  }, [logout]);
+  useIdleTimeout(IDLE_TIMEOUT_MS, handleIdle);
+  return null;
 }
 
 export default App;

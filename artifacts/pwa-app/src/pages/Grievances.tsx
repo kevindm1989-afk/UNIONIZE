@@ -98,9 +98,21 @@ export default function Grievances() {
                     </p>
                     
                     <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 font-medium bg-muted px-2 py-1 rounded">
-                        Step {g.step}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 font-medium bg-muted px-2 py-1 rounded">
+                          {g.step === 5 ? "Arbitration" : `Step ${g.step}`}
+                        </span>
+                        {g.isOverdue && (
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm border bg-red-50 text-red-700 border-red-200">
+                            Overdue
+                          </span>
+                        )}
+                        {g.accommodationRequest && (
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm border bg-blue-50 text-blue-700 border-blue-200">
+                            ADA
+                          </span>
+                        )}
+                      </div>
                       
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" /> 

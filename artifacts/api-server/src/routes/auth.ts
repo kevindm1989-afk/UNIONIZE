@@ -7,6 +7,15 @@ import { sendAccessRequestNotification } from "../lib/email";
 
 const router: IRouter = Router();
 
+function validatePasswordStrength(password: string): string | null {
+  if (password.length < 12) return "Password must be at least 12 characters.";
+  if (!/[A-Z]/.test(password)) return "Password must include at least one uppercase letter.";
+  if (!/[a-z]/.test(password)) return "Password must include at least one lowercase letter.";
+  if (!/[0-9]/.test(password)) return "Password must include at least one digit.";
+  if (!/[^A-Za-z0-9]/.test(password)) return "Password must include at least one special character.";
+  return null;
+}
+
 declare module "express-session" {
   interface SessionData {
     userId: number;
@@ -258,6 +267,11 @@ router.post("/auth/users", async (req: Request, res: Response) => {
     res.status(400).json({ error: "username, displayName, and password are required" });
     return;
   }
+  const strengthError = validatePasswordStrength(String(password));
+  if (strengthError) {
+    res.status(400).json({ error: strengthError });
+    return;
+  }
   try {
     const passwordHash = await bcrypt.hash(String(password), 12);
     const [newUser] = await db
@@ -302,7 +316,14 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
   if (typeof isActive === "boolean") updates.isActive = isActive;
   if (role === "admin" || role === "chair" || role === "steward") updates.role = role;
   if (displayName) updates.displayName = String(displayName).trim();
-  if (password) updates.passwordHash = await bcrypt.hash(String(password), 12);
+  if (password) {
+    const strengthError = validatePasswordStrength(String(password));
+    if (strengthError) {
+      res.status(400).json({ error: strengthError });
+      return;
+    }
+    updates.passwordHash = await bcrypt.hash(String(password), 12);
+  }
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
     return;

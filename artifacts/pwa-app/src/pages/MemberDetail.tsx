@@ -99,6 +99,11 @@ export default function MemberDetail() {
   const [email, setEmail] = useState("");
   const [joinDate, setJoinDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [seniorityDate, setSeniorityDate] = useState("");
+  const [duesStatus, setDuesStatus] = useState("current");
+  const [duesLastPaid, setDuesLastPaid] = useState("");
+  const [shift, setShift] = useState("");
+  const [classificationDate, setClassificationDate] = useState("");
 
   // Files state
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -154,6 +159,11 @@ export default function MemberDetail() {
       setEmail(member.email ?? "");
       setJoinDate(member.joinDate ?? "");
       setNotes(member.notes ?? "");
+      setSeniorityDate(member.seniorityDate ? new Date(member.seniorityDate).toISOString().split("T")[0] : "");
+      setDuesStatus(member.duesStatus ?? "current");
+      setDuesLastPaid(member.duesLastPaid ? new Date(member.duesLastPaid).toISOString().split("T")[0] : "");
+      setShift(member.shift ?? "");
+      setClassificationDate(member.classificationDate ? new Date(member.classificationDate).toISOString().split("T")[0] : "");
     }
   }, [member, editOpen]);
 
@@ -177,6 +187,11 @@ export default function MemberDetail() {
           email: email || null,
           joinDate: joinDate || null,
           notes: notes || null,
+          seniorityDate: seniorityDate || null,
+          duesStatus: duesStatus || "current",
+          duesLastPaid: duesLastPaid || null,
+          shift: shift || null,
+          classificationDate: classificationDate || null,
         },
       },
       {
@@ -317,8 +332,36 @@ export default function MemberDetail() {
             )}
             {member.joinDate &&
               field(
-                "Seniority Date",
+                "Join Date",
                 format(new Date(member.joinDate), "MMM d, yyyy")
+              )}
+            {member.seniorityDate &&
+              field(
+                "Seniority Date",
+                format(new Date(member.seniorityDate), "MMM d, yyyy")
+              )}
+            {member.classificationDate &&
+              field(
+                "Classification Date",
+                format(new Date(member.classificationDate), "MMM d, yyyy")
+              )}
+            {member.shift && field("Shift", member.shift)}
+            {field(
+              "Dues Status",
+              <span className={
+                member.duesStatus === "delinquent"
+                  ? "font-semibold text-red-600"
+                  : member.duesStatus === "suspended"
+                  ? "font-semibold text-amber-600"
+                  : "font-semibold text-green-600"
+              }>
+                {member.duesStatus ? member.duesStatus.charAt(0).toUpperCase() + member.duesStatus.slice(1) : "Current"}
+              </span>
+            )}
+            {member.duesLastPaid &&
+              field(
+                "Dues Last Paid",
+                format(new Date(member.duesLastPaid), "MMM d, yyyy")
               )}
           </div>
         ) : null}
@@ -585,7 +628,7 @@ export default function MemberDetail() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Seniority Date
+                  Join Date
                 </label>
                 <Input
                   type="date"
@@ -594,6 +637,72 @@ export default function MemberDetail() {
                   className="h-12 rounded-xl bg-card"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Seniority Date
+                </label>
+                <Input
+                  type="date"
+                  value={seniorityDate}
+                  onChange={(e) => setSeniorityDate(e.target.value)}
+                  className="h-12 rounded-xl bg-card"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Classification Date
+                </label>
+                <Input
+                  type="date"
+                  value={classificationDate}
+                  onChange={(e) => setClassificationDate(e.target.value)}
+                  className="h-12 rounded-xl bg-card"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Shift
+                </label>
+                <Input
+                  value={shift}
+                  onChange={(e) => setShift(e.target.value)}
+                  placeholder="Days / Nights"
+                  className="h-12 rounded-xl bg-card"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Dues Last Paid
+                </label>
+                <Input
+                  type="date"
+                  value={duesLastPaid}
+                  onChange={(e) => setDuesLastPaid(e.target.value)}
+                  className="h-12 rounded-xl bg-card"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Dues Status
+              </label>
+              <select
+                value={duesStatus}
+                onChange={(e) => setDuesStatus(e.target.value)}
+                className="flex h-12 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="current">Current</option>
+                <option value="delinquent">Delinquent</option>
+                <option value="suspended">Suspended</option>
+                <option value="exempt">Exempt</option>
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

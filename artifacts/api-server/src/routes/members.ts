@@ -4,6 +4,7 @@ import { db, membersTable, grievancesTable, memberFilesTable } from "@workspace/
 import { eq, and, ilike, or, desc } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
 import { storageUpload } from "../lib/storageAdapter";
+import { logAudit } from "../lib/auditLog";
 import {
   CreateMemberBody,
   UpdateMemberBody,
@@ -56,6 +57,7 @@ router.post("/", requirePermission("members.edit"), async (req, res) => {
   }
 
   const d = parsed.data;
+  const body = req.body as Record<string, unknown>;
   const [member] = await db
     .insert(membersTable)
     .values({
@@ -68,9 +70,15 @@ router.post("/", requirePermission("members.edit"), async (req, res) => {
       joinDate: d.joinDate ?? null,
       isActive: d.isActive ?? true,
       notes: d.notes ?? null,
+      seniorityDate: (body.seniorityDate as string) ?? null,
+      duesStatus: (body.duesStatus as string) ?? "current",
+      duesLastPaid: (body.duesLastPaid as string) ?? null,
+      shift: (body.shift as string) ?? null,
+      classificationDate: (body.classificationDate as string) ?? null,
     })
     .returning();
 
+  await logAudit(req, "create", "member", member.id, null, formatMember(member));
   res.status(201).json(formatMember(member));
 });
 
@@ -134,6 +142,7 @@ router.patch("/:id", requirePermission("members.edit"), async (req, res) => {
   }
 
   const d = bodyParsed.data;
+  const body = req.body as Record<string, unknown>;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (d.name !== undefined) updates.name = d.name;
   if (d.employeeId !== undefined) updates.employeeId = d.employeeId;
@@ -144,6 +153,13 @@ router.patch("/:id", requirePermission("members.edit"), async (req, res) => {
   if (d.joinDate !== undefined) updates.joinDate = d.joinDate;
   if (d.isActive !== undefined) updates.isActive = d.isActive;
   if (d.notes !== undefined) updates.notes = d.notes;
+  if (body.seniorityDate !== undefined) updates.seniorityDate = body.seniorityDate || null;
+  if (body.duesStatus !== undefined) updates.duesStatus = body.duesStatus || null;
+  if (body.duesLastPaid !== undefined) updates.duesLastPaid = body.duesLastPaid || null;
+  if (body.shift !== undefined) updates.shift = body.shift || null;
+  if (body.classificationDate !== undefined) updates.classificationDate = body.classificationDate || null;
+
+  const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, paramParsed.data.id));
 
   const [member] = await db
     .update(membersTable)
@@ -156,6 +172,9 @@ router.patch("/:id", requirePermission("members.edit"), async (req, res) => {
     return;
   }
 
+  if (existing) {
+    await logAudit(req, "update", "member", member.id, formatMember(existing), formatMember(member));
+  }
   res.json(formatMember(member));
 });
 
@@ -166,6 +185,10 @@ router.delete("/:id", requirePermission("members.edit"), async (req, res) => {
     return;
   }
 
+  const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, parsed.data.id));
+  if (existing) {
+    await logAudit(req, "delete", "member", existing.id, formatMember(existing), null);
+  }
   await db.delete(membersTable).where(eq(membersTable.id, parsed.data.id));
   res.status(204).end();
 });
@@ -182,6 +205,11 @@ function formatMember(m: typeof membersTable.$inferSelect) {
     joinDate: m.joinDate ?? null,
     isActive: m.isActive,
     notes: m.notes ?? null,
+    seniorityDate: m.seniorityDate ?? null,
+    duesStatus: m.duesStatus ?? "current",
+    duesLastPaid: m.duesLastPaid ?? null,
+    shift: m.shift ?? null,
+    classificationDate: m.classificationDate ?? null,
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
   };

@@ -32,6 +32,91 @@ const STEWARD_DEFAULT: Permission[] = [
   "documents.view",
 ];
 
+export async function ensureAuditLogTable(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id INTEGER NOT NULL,
+        old_value JSONB,
+        new_value JSONB,
+        ip_address TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs (entity_type, entity_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs (user_id);
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureLocalSettingsTable(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS local_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT NOT NULL,
+        description TEXT,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    // Seed default grievance deadlines (days) — only insert if not already present
+    const defaults = [
+      ["grievance_deadline_step_1", "5", "Days to respond at Step 1"],
+      ["grievance_deadline_step_2", "10", "Days to respond at Step 2"],
+      ["grievance_deadline_step_3", "15", "Days to respond at Step 3"],
+      ["grievance_deadline_step_4", "20", "Days to respond at Step 4"],
+      ["grievance_deadline_step_5", "30", "Days to respond at Arbitration (Step 5)"],
+    ];
+    for (const [key, value, description] of defaults) {
+      await client.query(
+        `INSERT INTO local_settings (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`,
+        [key, value, description],
+      );
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureGrievanceEnhancements(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE grievances
+        ADD COLUMN IF NOT EXISTS accommodation_request BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureMemberEnhancements(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE members
+        ADD COLUMN IF NOT EXISTS seniority_date DATE,
+        ADD COLUMN IF NOT EXISTS dues_status VARCHAR(20) DEFAULT 'current',
+        ADD COLUMN IF NOT EXISTS dues_last_paid DATE,
+        ADD COLUMN IF NOT EXISTS shift VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS classification_date DATE;
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureMemberFilesTable(): Promise<void> {
   const client = await pool.connect();
   try {

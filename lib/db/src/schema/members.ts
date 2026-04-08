@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, date, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, date, boolean, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,11 @@ export const membersTable = pgTable("members", {
   joinDate: date("join_date"),
   isActive: boolean("is_active").notNull().default(true),
   notes: text("notes"),
+  seniorityDate: date("seniority_date"),
+  duesStatus: varchar("dues_status", { length: 20 }).default("current"),
+  duesLastPaid: date("dues_last_paid"),
+  shift: varchar("shift", { length: 20 }),
+  classificationDate: date("classification_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

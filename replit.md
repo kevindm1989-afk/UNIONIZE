@@ -27,9 +27,12 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 
 ## Database Schema
 
-- **members** — union member records (name, employee_id, department, classification, phone, email, join_date, is_active, notes)
-- **grievances** — grievance tracking (grievance_number, member_id, title, description, contract_article, step 1-4, status, filed_date, due_date, resolved_date, resolution, notes)
+- **members** — union member records (+ seniority_date, dues_status, dues_last_paid, shift, classification_date)
+- **grievances** — grievance tracking (steps 1–5 incl. Arbitration, accommodation_request flag; due_date auto-calculated from local_settings)
 - **announcements** — bulletins/announcements (title, content, category, is_urgent, published_at)
+- **member_files** — attached documents per member (category: general/discipline/grievance)
+- **audit_logs** — immutable trail of create/update/delete on members & grievances
+- **local_settings** — configurable key-value store (e.g. `grievance_deadline_step_N` days)
 
 ## API Routes
 
@@ -61,6 +64,21 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 
 ## Grievance Statuses
 `open` | `pending_response` | `pending_hearing` | `resolved` | `withdrawn`
+
+## Dues Statuses
+`current` | `delinquent` | `suspended` | `exempt`
+
+## Security Features
+- Password strength: min 12 chars, upper+lower+digit+special required (enforced on user create/reset)
+- Idle auto-logout: 30 minutes of inactivity signs user out
+- Audit logging: all member/grievance CRUD logged to `audit_logs` with IP, user, old/new values
+
+## Grievance Enhancements
+- Steps 1–5 (Step 5 = Arbitration with 30-day deadline)
+- `accommodation_request` flag (ADA) on each grievance
+- `isOverdue` computed field (due_date past + non-terminal status)
+- Due dates auto-calculated from `local_settings` (`grievance_deadline_step_N`) on create or step change
+- Overdue/ADA badges visible in list and detail views
 
 ## Announcement Categories
 `general` | `urgent` | `contract` | `meeting` | `action`

@@ -1,5 +1,7 @@
 export * from "./members";
 export * from "./member_files";
+export * from "./audit_logs";
+export * from "./local_settings";
 export * from "./grievances";
 export * from "./announcements";
 export * from "./documents";

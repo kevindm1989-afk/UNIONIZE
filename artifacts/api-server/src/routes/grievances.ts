@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, grievancesTable, membersTable } from "@workspace/db";
-import { eq, and, desc, sql, lt } from "drizzle-orm";
+import { db, grievancesTable, membersTable, localSettingsTable } from "@workspace/db";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
+import { logAudit } from "../lib/auditLog";
 import {
   CreateGrievanceBody,
   UpdateGrievanceBody,
@@ -13,10 +14,41 @@ import {
 
 const router = Router();
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
 async function lookupMemberName(memberId: number | null | undefined): Promise<string | null> {
   if (!memberId) return null;
   const [m] = await db.select({ name: membersTable.name }).from(membersTable).where(eq(membersTable.id, memberId));
   return m?.name ?? null;
+}
+
+async function getDeadlineDays(step: number): Promise<number> {
+  const defaults: Record<number, number> = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 30 };
+  try {
+    const key = `grievance_deadline_step_${step}`;
+    const [row] = await db
+      .select({ value: localSettingsTable.value })
+      .from(localSettingsTable)
+      .where(eq(localSettingsTable.key, key));
+    if (row) return parseInt(row.value, 10) || defaults[step] || 30;
+  } catch {
+    // fall through to default
+  }
+  return defaults[step] ?? 30;
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+const TERMINAL_STATUSES = ["resolved", "withdrawn"] as const;
+
+function isOverdue(g: typeof grievancesTable.$inferSelect): boolean {
+  if (!g.dueDate) return false;
+  if ((TERMINAL_STATUSES as readonly string[]).includes(g.status)) return false;
+  return new Date(g.dueDate) < new Date(new Date().toISOString().split("T")[0]);
 }
 
 function formatGrievance(g: typeof grievancesTable.$inferSelect, memberName?: string | null) {
@@ -30,11 +62,13 @@ function formatGrievance(g: typeof grievancesTable.$inferSelect, memberName?: st
     contractArticle: g.contractArticle ?? null,
     step: g.step,
     status: g.status,
+    accommodationRequest: g.accommodationRequest ?? false,
     filedDate: g.filedDate,
     dueDate: g.dueDate ?? null,
     resolvedDate: g.resolvedDate ?? null,
     resolution: g.resolution ?? null,
     notes: g.notes ?? null,
+    isOverdue: isOverdue(g),
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
   };
@@ -45,6 +79,8 @@ function generateGrievanceNumber(): string {
   const rand = Math.floor(Math.random() * 9000) + 1000;
   return `GRV-${year}-${rand}`;
 }
+
+// ─── routes ───────────────────────────────────────────────────────────────────
 
 router.get("/", async (req, res) => {
   const parsed = ListGrievancesQueryParams.safeParse(req.query);
@@ -83,6 +119,16 @@ router.post("/", requirePermission("grievances.file"), async (req, res) => {
   }
 
   const d = parsed.data;
+  const step = d.step ?? 1;
+
+  // Auto-calculate due_date from local_settings if not provided
+  let dueDate = d.dueDate ? new Date(d.dueDate as unknown as string).toISOString().split("T")[0] : null;
+  if (!dueDate && d.filedDate) {
+    const days = await getDeadlineDays(step);
+    const filedStr = new Date(d.filedDate as unknown as string).toISOString().split("T")[0];
+    dueDate = addDays(filedStr, days);
+  }
+
   const [grievance] = await db
     .insert(grievancesTable)
     .values({
@@ -91,13 +137,16 @@ router.post("/", requirePermission("grievances.file"), async (req, res) => {
       title: d.title,
       description: d.description ?? null,
       contractArticle: d.contractArticle ?? null,
-      step: d.step ?? 1,
+      step,
       status: d.status ?? "open",
-      filedDate: d.filedDate,
-      dueDate: d.dueDate ?? null,
+      filedDate: new Date(d.filedDate as unknown as string).toISOString().split("T")[0],
+      dueDate,
       notes: d.notes ?? null,
+      accommodationRequest: (d as Record<string, unknown>).accommodationRequest as boolean ?? false,
     })
     .returning();
+
+  await logAudit(req, "create", "grievance", grievance.id, null, formatGrievance(grievance));
 
   const memberName = await lookupMemberName(grievance.memberId);
   res.status(201).json(formatGrievance(grievance, memberName));
@@ -119,6 +168,8 @@ router.get("/stats/summary", async (_req, res) => {
       step2: sql<number>`count(*) filter (where step = 2)::int`,
       step3: sql<number>`count(*) filter (where step = 3)::int`,
       step4: sql<number>`count(*) filter (where step = 4)::int`,
+      step5: sql<number>`count(*) filter (where step = 5)::int`,
+      accommodation: sql<number>`count(*) filter (where accommodation_request = true)::int`,
     })
     .from(grievancesTable);
 
@@ -159,19 +210,44 @@ router.patch("/:id", requirePermission("grievances.file"), async (req, res) => {
     return;
   }
 
+  const [existing] = await db
+    .select()
+    .from(grievancesTable)
+    .where(eq(grievancesTable.id, paramParsed.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
   const d = bodyParsed.data;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
+
   if (d.memberId !== undefined) updates.memberId = d.memberId;
   if (d.title !== undefined) updates.title = d.title;
   if (d.description !== undefined) updates.description = d.description;
   if (d.contractArticle !== undefined) updates.contractArticle = d.contractArticle;
-  if (d.step !== undefined) updates.step = d.step;
   if (d.status !== undefined) updates.status = d.status;
-  if (d.filedDate !== undefined) updates.filedDate = d.filedDate;
-  if (d.dueDate !== undefined) updates.dueDate = d.dueDate;
-  if (d.resolvedDate !== undefined) updates.resolvedDate = d.resolvedDate;
+  if (d.filedDate !== undefined) updates.filedDate = new Date(d.filedDate as unknown as string).toISOString().split("T")[0];
+  if (d.resolvedDate !== undefined) updates.resolvedDate = d.resolvedDate ? new Date(d.resolvedDate as unknown as string).toISOString().split("T")[0] : null;
   if (d.resolution !== undefined) updates.resolution = d.resolution;
   if (d.notes !== undefined) updates.notes = d.notes;
+  if ((d as Record<string, unknown>).accommodationRequest !== undefined) {
+    updates.accommodationRequest = (d as Record<string, unknown>).accommodationRequest;
+  }
+
+  // Handle step change — recalculate due_date unless explicitly provided
+  if (d.step !== undefined) {
+    updates.step = d.step;
+    if (d.dueDate !== undefined) {
+      updates.dueDate = d.dueDate ? new Date(d.dueDate as unknown as string).toISOString().split("T")[0] : null;
+    } else {
+      const days = await getDeadlineDays(d.step);
+      updates.dueDate = addDays(new Date().toISOString().split("T")[0], days);
+    }
+  } else if (d.dueDate !== undefined) {
+    updates.dueDate = d.dueDate ? new Date(d.dueDate as unknown as string).toISOString().split("T")[0] : null;
+  }
 
   const [grievance] = await db
     .update(grievancesTable)
@@ -184,6 +260,8 @@ router.patch("/:id", requirePermission("grievances.file"), async (req, res) => {
     return;
   }
 
+  await logAudit(req, "update", "grievance", grievance.id, formatGrievance(existing), formatGrievance(grievance));
+
   const memberName = await lookupMemberName(grievance.memberId);
   res.json(formatGrievance(grievance, memberName));
 });
@@ -193,6 +271,15 @@ router.delete("/:id", requirePermission("grievances.manage"), async (req, res) =
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid ID" });
     return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(grievancesTable)
+    .where(eq(grievancesTable.id, parsed.data.id));
+
+  if (existing) {
+    await logAudit(req, "delete", "grievance", existing.id, formatGrievance(existing), null);
   }
 
   await db.delete(grievancesTable).where(eq(grievancesTable.id, parsed.data.id));

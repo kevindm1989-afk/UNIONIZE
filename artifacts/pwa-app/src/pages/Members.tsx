@@ -67,10 +67,16 @@ export default function Members() {
                 <Card className="shadow-sm border-border hover:border-primary/50 transition-colors">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-lg">{member.name}</span>
                         {!member.isActive && (
                           <span className="text-[10px] uppercase font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Inactive</span>
+                        )}
+                        {member.duesStatus === "delinquent" && (
+                          <span className="text-[10px] uppercase font-bold bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Dues Delinquent</span>
+                        )}
+                        {member.duesStatus === "suspended" && (
+                          <span className="text-[10px] uppercase font-bold bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">Dues Suspended</span>
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground mt-0.5">

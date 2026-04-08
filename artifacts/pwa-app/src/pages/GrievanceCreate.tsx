@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -28,6 +29,7 @@ const formSchema = z.object({
   status: z.enum(["open", "pending_response", "pending_hearing", "resolved", "withdrawn"]).default("open"),
   filedDate: z.string().min(1, "Filed date is required"),
   dueDate: z.string().optional(),
+  accommodationRequest: z.boolean().default(false),
   notes: z.string().optional(),
 });
 
@@ -51,6 +53,7 @@ export default function GrievanceCreate() {
       filedDate: todayStr,
       dueDate: "",
       notes: "",
+      accommodationRequest: false,
     },
   });
 
@@ -67,6 +70,7 @@ export default function GrievanceCreate() {
           filedDate: values.filedDate,
           dueDate: values.dueDate || null,
           notes: values.notes || null,
+          accommodationRequest: values.accommodationRequest,
         },
       },
       {
@@ -160,6 +164,7 @@ export default function GrievanceCreate() {
                         <SelectItem value="2">Step 2</SelectItem>
                         <SelectItem value="3">Step 3</SelectItem>
                         <SelectItem value="4">Step 4</SelectItem>
+                        <SelectItem value="5">Step 5 — Arbitration</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -217,6 +222,24 @@ export default function GrievanceCreate() {
                     <Textarea placeholder="Internal notes, witnesses, evidence..." className="min-h-[80px] rounded-xl bg-card resize-none" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="accommodationRequest" render={({ field }) => (
+                <FormItem className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      id="accommodationRequest"
+                    />
+                  </FormControl>
+                  <div>
+                    <FormLabel htmlFor="accommodationRequest" className="text-sm font-semibold cursor-pointer">
+                      ADA / Accommodation Request
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">Member has a disability accommodation involved</p>
+                  </div>
                 </FormItem>
               )} />
 
