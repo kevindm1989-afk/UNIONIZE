@@ -4,6 +4,10 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
 import { logAudit } from "../lib/auditLog";
 import {
+  sendGrievanceFiledNotification,
+  sendGrievanceStatusNotification,
+} from "../lib/email";
+import {
   CreateGrievanceBody,
   UpdateGrievanceBody,
   ListGrievancesQueryParams,
@@ -149,6 +153,18 @@ router.post("/", requirePermission("grievances.file"), async (req, res) => {
   await logAudit(req, "create", "grievance", grievance.id, null, formatGrievance(grievance));
 
   const memberName = await lookupMemberName(grievance.memberId);
+
+  // Fire-and-forget notification
+  sendGrievanceFiledNotification({
+    grievanceId: grievance.id,
+    grievanceNumber: grievance.grievanceNumber,
+    title: grievance.title,
+    memberName,
+    step: grievance.step,
+    dueDate: grievance.dueDate ?? null,
+    isAda: grievance.accommodationRequest ?? false,
+  }).catch(() => undefined);
+
   res.status(201).json(formatGrievance(grievance, memberName));
 });
 
@@ -263,6 +279,20 @@ router.patch("/:id", requirePermission("grievances.file"), async (req, res) => {
   await logAudit(req, "update", "grievance", grievance.id, formatGrievance(existing), formatGrievance(grievance));
 
   const memberName = await lookupMemberName(grievance.memberId);
+
+  // Fire-and-forget status change notification
+  if (d.status !== undefined && d.status !== existing.status) {
+    sendGrievanceStatusNotification({
+      grievanceId: grievance.id,
+      grievanceNumber: grievance.grievanceNumber,
+      title: grievance.title,
+      memberName,
+      oldStatus: existing.status,
+      newStatus: grievance.status,
+      step: grievance.step,
+    }).catch(() => undefined);
+  }
+
   res.json(formatGrievance(grievance, memberName));
 });
 

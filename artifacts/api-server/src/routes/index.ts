@@ -8,6 +8,7 @@ import storageRouter from "./storage";
 import documentsRouter from "./documents";
 import authRouter from "./auth";
 import anthropicRouter from "./anthropic/index";
+import settingsRouter from "./settings";
 import { requirePermission } from "../lib/permissions";
 
 const router: IRouter = Router();
@@ -32,5 +33,6 @@ router.use("/dashboard", dashboardRouter);
 router.use(requirePermission("documents.view"), storageRouter);
 router.use("/documents", requirePermission("documents.view"), documentsRouter);
 router.use("/anthropic", anthropicRouter);
+router.use("/settings", requirePermission("members.edit"), settingsRouter);
 
 export default router;

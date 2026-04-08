@@ -80,5 +80,23 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 - Due dates auto-calculated from `local_settings` (`grievance_deadline_step_N`) on create or step change
 - Overdue/ADA badges visible in list and detail views
 
+## Email Notifications
+- Provider: **Resend** (via Replit integration — no SMTP credentials needed)
+- Trigger events: new grievance filed, grievance status changed, new access request
+- Recipient: admin email — set in Admin → Config tab (stored in `local_settings.admin_email`) or `ADMIN_EMAIL` env var
+- All notifications are fire-and-forget (never block the API response)
+- Notifications silently skip if no admin email is configured
+
+## Admin Panel Config Tab
+New "Config" tab in the Admin panel (`/admin`) for:
+- Admin notification email (stored in `local_settings`)
+- Portal URL for email links (defaults to Fly.io URL)
+- Grievance step deadlines (days per step 1–5)
+
+## Settings API
+- `GET /api/settings` — returns all local_settings as `{ key: { value, description } }`
+- `PATCH /api/settings` — updates one or more allowed keys
+- Requires `members.edit` permission
+
 ## Announcement Categories
 `general` | `urgent` | `contract` | `meeting` | `action`

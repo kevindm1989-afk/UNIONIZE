@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
   ChevronLeft, Users, ClipboardList, CheckCircle, XCircle,
-  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy, Settings,
+  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy, Settings, Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-type Tab = "requests" | "users" | "roles";
+type Tab = "requests" | "users" | "roles" | "config";
 
 interface AccessRequest {
   id: number;
@@ -185,6 +185,55 @@ export default function Admin() {
 
   const ROLE_LABELS: Record<string, string> = { chair: "Chair", steward: "Steward" };
 
+  // ── Settings ─────────────────────────────────────────────────────────────────
+  type SettingsMap = Record<string, { value: string; description: string | null }>;
+  const { data: settingsData, isLoading: loadingSettings } = useQuery<SettingsMap>({
+    queryKey: ["/settings"],
+    queryFn: () => fetchJson("/api/settings"),
+    enabled: tab === "config",
+  });
+
+  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
+  const [settingsDirty, setSettingsDirty] = useState(false);
+
+  const saveSettings = useMutation({
+    mutationFn: (body: Record<string, string>) =>
+      fetchJson("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/settings"] });
+      setSettingsDirty(false);
+      toast({ title: "Settings saved" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function initSettings(data: SettingsMap) {
+    const init: Record<string, string> = {};
+    for (const key of ["admin_email", "portal_url",
+      "grievance_deadline_step_1", "grievance_deadline_step_2",
+      "grievance_deadline_step_3", "grievance_deadline_step_4",
+      "grievance_deadline_step_5"]) {
+      init[key] = data[key]?.value ?? "";
+    }
+    setSettingsForm(init);
+    setSettingsDirty(false);
+  }
+
+  useEffect(() => {
+    if (settingsData && Object.keys(settingsForm).length === 0) {
+      initSettings(settingsData);
+    }
+  }, [settingsData]);
+
+  function settingField(key: string, v: string) {
+    setSettingsForm((p) => ({ ...p, [key]: v }));
+    setSettingsDirty(true);
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
     toast({ title: "Copied", description: "Copied to clipboard." });
@@ -255,6 +304,7 @@ export default function Admin() {
             { id: "requests" as Tab, label: "Requests", icon: ClipboardList, count: requests.length },
             { id: "users" as Tab, label: "Stewards", icon: Users, count: null },
             { id: "roles" as Tab, label: "Roles", icon: Settings, count: null },
+            { id: "config" as Tab, label: "Config", icon: Mail, count: null },
           ]).map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
@@ -473,6 +523,85 @@ export default function Admin() {
                 </div>
               ))
             ) : null}
+          </section>
+        )}
+
+        {/* Config / Settings Tab */}
+        {tab === "config" && (
+          <section className="space-y-4">
+            {loadingSettings ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {/* Notifications */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border bg-muted/30">
+                    <p className="font-extrabold text-sm tracking-tight">Email Notifications</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Emails sent via Resend when grievances are filed or updated</p>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Admin Notification Email</label>
+                      <Input
+                        type="email"
+                        placeholder="steward@local1285.org"
+                        value={settingsForm["admin_email"] ?? ""}
+                        onChange={(e) => settingField("admin_email", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Receives new grievance and access request notifications</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portal URL</label>
+                      <Input
+                        type="url"
+                        placeholder="https://union-local-1285.fly.dev"
+                        value={settingsForm["portal_url"] ?? ""}
+                        onChange={(e) => settingField("portal_url", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Used for links in notification emails</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grievance Deadlines */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border bg-muted/30">
+                    <p className="font-extrabold text-sm tracking-tight">Grievance Step Deadlines</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Days from filing to due date for each step</p>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {[1, 2, 3, 4, 5].map((step) => (
+                      <div key={step} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">{step === 5 ? "Step 5 — Arbitration" : `Step ${step}`}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={1}
+                            max={365}
+                            className="w-20 text-center h-9"
+                            value={settingsForm[`grievance_deadline_step_${step}`] ?? ""}
+                            onChange={(e) => settingField(`grievance_deadline_step_${step}`, e.target.value)}
+                          />
+                          <span className="text-xs text-muted-foreground w-8">days</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full h-12 rounded-xl font-bold"
+                  disabled={!settingsDirty || saveSettings.isPending}
+                  onClick={() => saveSettings.mutate(settingsForm)}
+                >
+                  {saveSettings.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Settings"}
+                </Button>
+              </>
+            )}
           </section>
         )}
       </div>
