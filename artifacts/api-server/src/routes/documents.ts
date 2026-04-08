@@ -1,14 +1,17 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { db, documentsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
 
 const router = Router();
 
+const VALID_CATEGORIES = ["cba", "moa", "bylaw", "policy", "form", "guide"] as const;
+
 function formatDocument(d: typeof documentsTable.$inferSelect) {
   return {
     id: d.id,
     title: d.title,
+    category: d.category ?? "cba",
     description: d.description ?? null,
     filename: d.filename,
     objectPath: d.objectPath,
@@ -18,27 +21,34 @@ function formatDocument(d: typeof documentsTable.$inferSelect) {
     effectiveDate: d.effectiveDate ?? null,
     expirationDate: d.expirationDate ?? null,
     notes: d.notes ?? null,
+    uploadedBy: d.uploadedBy ?? null,
     uploadedAt: d.uploadedAt.toISOString(),
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
   };
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req: Request, res) => {
+  const { category } = req.query;
   const docs = await db
     .select()
     .from(documentsTable)
+    .where(category && typeof category === "string" && VALID_CATEGORIES.includes(category as typeof VALID_CATEGORIES[number])
+      ? eq(documentsTable.category, category)
+      : undefined)
     .orderBy(desc(documentsTable.uploadedAt));
   res.json(docs.map(formatDocument));
 });
 
-router.post("/", requirePermission("documents.upload"), async (req, res) => {
-  const { title, description, filename, objectPath, contentType, fileSize, isCurrent, effectiveDate, expirationDate, notes } = req.body;
+router.post("/", requirePermission("documents.upload"), async (req: Request, res) => {
+  const { title, category, description, filename, objectPath, contentType, fileSize, isCurrent, effectiveDate, expirationDate, notes } = req.body;
 
   if (!title || !filename || !objectPath || !contentType) {
     res.status(400).json({ error: "Missing required fields: title, filename, objectPath, contentType" });
     return;
   }
+
+  const docCategory = VALID_CATEGORIES.includes(category) ? category : "cba";
 
   if (isCurrent) {
     await db.update(documentsTable).set({ isCurrent: false, updatedAt: new Date() });
@@ -48,6 +58,7 @@ router.post("/", requirePermission("documents.upload"), async (req, res) => {
     .insert(documentsTable)
     .values({
       title,
+      category: docCategory,
       description: description ?? null,
       filename,
       objectPath,
@@ -57,6 +68,7 @@ router.post("/", requirePermission("documents.upload"), async (req, res) => {
       effectiveDate: effectiveDate ?? null,
       expirationDate: expirationDate ?? null,
       notes: notes ?? null,
+      uploadedBy: req.session?.userId ?? null,
     })
     .returning();
 
@@ -76,9 +88,10 @@ router.patch("/:id", requirePermission("documents.upload"), async (req, res) => 
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, isCurrent, effectiveDate, expirationDate, notes } = req.body;
+  const { title, category, description, isCurrent, effectiveDate, expirationDate, notes } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title;
+  if (category !== undefined && VALID_CATEGORIES.includes(category)) updates.category = category;
   if (description !== undefined) updates.description = description;
   if (isCurrent !== undefined) updates.isCurrent = isCurrent;
   if (effectiveDate !== undefined) updates.effectiveDate = effectiveDate;

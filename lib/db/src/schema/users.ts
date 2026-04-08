@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   displayName: text("display_name").notNull(),
   role: text("role").notNull().default("steward"),
   isActive: boolean("is_active").notNull().default(true),
+  linkedMemberId: integer("linked_member_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

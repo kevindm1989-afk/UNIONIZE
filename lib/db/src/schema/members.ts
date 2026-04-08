@@ -18,6 +18,11 @@ export const membersTable = pgTable("members", {
   duesLastPaid: date("dues_last_paid"),
   shift: varchar("shift", { length: 20 }),
   classificationDate: date("classification_date"),
+  signatureData: text("signature_data"),
+  signedAt: timestamp("signed_at"),
+  engagementLevel: varchar("engagement_level", { length: 20 }).default("unknown"),
+  shopFloorLeader: boolean("shop_floor_leader").notNull().default(false),
+  organizingNotes: text("organizing_notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

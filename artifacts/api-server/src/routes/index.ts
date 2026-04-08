@@ -11,6 +11,7 @@ import anthropicRouter from "./anthropic/index";
 import settingsRouter from "./settings";
 import auditLogsRouter from "./audit-logs";
 import grievanceNotesRouter from "./grievance-notes";
+import memberPortalRouter from "./member-portal";
 import { requirePermission } from "../lib/permissions";
 
 const router: IRouter = Router();
@@ -28,6 +29,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 router.use(requireAuth);
 
+router.use("/member-portal", memberPortalRouter);
 router.use("/members", requirePermission("members.view"), membersRouter);
 router.use("/grievances", requirePermission("grievances.view"), grievancesRouter);
 router.use("/announcements", requirePermission("bulletins.view"), announcementsRouter);

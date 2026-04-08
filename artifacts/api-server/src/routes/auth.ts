@@ -23,6 +23,7 @@ declare module "express-session" {
     displayName: string;
     role: string;
     permissions: string[];
+    linkedMemberId?: number;
   }
 }
 
@@ -62,6 +63,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     req.session.displayName = user.displayName;
     req.session.role = user.role;
     req.session.permissions = permissions;
+    req.session.linkedMemberId = user.linkedMemberId ?? undefined;
 
     req.session.save((err) => {
       if (err) {
@@ -75,6 +77,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
         displayName: user.displayName,
         role: user.role,
         permissions,
+        linkedMemberId: user.linkedMemberId ?? null,
       });
     });
   } catch (err) {
@@ -107,6 +110,7 @@ router.get("/auth/me", (req: Request, res: Response) => {
     displayName: req.session.displayName,
     role: req.session.role,
     permissions: req.session.permissions ?? [],
+    linkedMemberId: req.session.linkedMemberId ?? null,
   });
 });
 
@@ -247,6 +251,7 @@ router.get("/auth/users", async (req: Request, res: Response) => {
       displayName: usersTable.displayName,
       role: usersTable.role,
       isActive: usersTable.isActive,
+      linkedMemberId: usersTable.linkedMemberId,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -280,7 +285,7 @@ router.post("/auth/users", async (req: Request, res: Response) => {
         username: String(username).toLowerCase().trim(),
         displayName: String(displayName).trim(),
         passwordHash,
-        role: role === "admin" ? "admin" : role === "chair" ? "chair" : "steward",
+        role: (["admin", "chair", "steward", "member"] as string[]).includes(role) ? role : "steward",
         isActive: true,
       })
       .returning({
@@ -311,10 +316,11 @@ router.patch("/auth/users/:id", async (req: Request, res: Response) => {
     return;
   }
   const id = Number(req.params.id);
-  const { isActive, role, password, displayName } = req.body ?? {};
-  const updates: Record<string, any> = {};
+  const { isActive, role, password, displayName, linkedMemberId } = req.body ?? {};
+  const updates: Record<string, unknown> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
-  if (role === "admin" || role === "chair" || role === "steward") updates.role = role;
+  if ((["admin", "chair", "steward", "member"] as string[]).includes(role)) updates.role = role;
+  if (linkedMemberId !== undefined) updates.linkedMemberId = linkedMemberId === null ? null : Number(linkedMemberId);
   if (displayName) updates.displayName = String(displayName).trim();
   if (password) {
     const strengthError = validatePasswordStrength(String(password));

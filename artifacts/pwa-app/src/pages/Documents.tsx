@@ -24,6 +24,17 @@ import { cn } from "@/lib/utils";
 
 type UploadStep = "idle" | "file-selected" | "working" | "done" | "error";
 
+const CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "cba", label: "CBA" },
+  { id: "moa", label: "MOA" },
+  { id: "bylaw", label: "Bylaws" },
+  { id: "policy", label: "Policy" },
+  { id: "form", label: "Forms" },
+  { id: "guide", label: "Guides" },
+] as const;
+type CategoryId = typeof CATEGORIES[number]["id"];
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -82,6 +93,8 @@ export default function Documents() {
   const [effectiveDate, setEffectiveDate] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
+  const [uploadCategory, setUploadCategory] = useState<string>("cba");
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 
   const { data: documents, isLoading } = useListDocuments({
     query: { queryKey: getListDocumentsQueryKey() },
@@ -100,6 +113,7 @@ export default function Documents() {
     setTitle("");
     setDescription("");
     setEffectiveDate("");
+    setUploadCategory("cba");
     setUploadError(null);
     setUploadProgress(0);
     setStatusText("");
@@ -135,6 +149,7 @@ export default function Documents() {
           {
             data: {
               title: title.trim(),
+              category: uploadCategory as any,
               description: description.trim() || null,
               filename: result.filename,
               objectPath: result.objectPath,
@@ -178,16 +193,20 @@ export default function Documents() {
     window.open(`/api/storage${doc.objectPath}`, "_blank", "noopener");
   };
 
-  const currentDoc = documents?.find((d) => d.isCurrent);
-  const otherDocs = documents?.filter((d) => !d.isCurrent) ?? [];
+  const filteredDocs = activeCategory === "all"
+    ? (documents ?? [])
+    : (documents ?? []).filter((d) => (d as any).category === activeCategory);
+
+  const currentDoc = filteredDocs.find((d) => d.isCurrent);
+  const otherDocs = filteredDocs.filter((d) => !d.isCurrent);
 
   return (
     <MobileLayout>
       <div className="p-5 space-y-5">
         <header className="flex items-start justify-between mt-2">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">CBA Documents</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Collective Bargaining Agreements</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Documents</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Union Library</p>
           </div>
           {can("documents.upload") && (
             <Button
@@ -200,19 +219,38 @@ export default function Documents() {
           )}
         </header>
 
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all",
+                activeCategory === cat.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-32 rounded-xl" />
             <Skeleton className="h-20 rounded-xl" />
           </div>
-        ) : (documents?.length ?? 0) === 0 ? (
+        ) : filteredDocs.length === 0 ? (
           <div className="py-16 text-center bg-card border border-dashed border-border rounded-xl">
             <FileText className="w-14 h-14 mx-auto text-muted-foreground opacity-20 mb-4" />
-            <p className="font-semibold text-muted-foreground">No CBA uploaded yet</p>
-            <p className="text-sm text-muted-foreground mt-1 mb-5">Upload the contract to give stewards quick access.</p>
+            <p className="font-semibold text-muted-foreground">
+              {activeCategory === "all" ? "No documents yet" : `No ${CATEGORIES.find(c => c.id === activeCategory)?.label} documents`}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 mb-5">Upload documents to give stewards quick access.</p>
             {can("documents.upload") && (
               <Button onClick={() => { setSheetOpen(true); resetSheet(); }} className="rounded-xl gap-2">
-                <Upload className="w-4 h-4" /> Upload CBA
+                <Upload className="w-4 h-4" /> Upload Document
               </Button>
             )}
           </div>
@@ -326,14 +364,14 @@ export default function Documents() {
       >
         <SheetContent side="bottom" className="h-auto max-h-[92dvh] rounded-t-2xl overflow-y-auto">
           <SheetHeader className="mb-5">
-            <SheetTitle className="text-lg font-extrabold tracking-tight">Upload CBA Document</SheetTitle>
+            <SheetTitle className="text-lg font-extrabold tracking-tight">Upload Document</SheetTitle>
           </SheetHeader>
 
           {uploadStep === "done" ? (
             <div className="py-10 text-center">
               <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto mb-3" />
               <p className="font-bold text-lg">Document uploaded</p>
-              <p className="text-sm text-muted-foreground mt-1">Your CBA is now available for stewards.</p>
+              <p className="text-sm text-muted-foreground mt-1">The document is now available to stewards.</p>
             </div>
           ) : uploadStep === "working" ? (
             <div className="py-8 space-y-5 text-center pb-8">
@@ -353,6 +391,28 @@ export default function Documents() {
             </div>
           ) : (
             <div className="space-y-4 pb-8">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                  Category
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.filter(c => c.id !== "all").map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setUploadCategory(cat.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-bold transition-all",
+                        uploadCategory === cat.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
                   File (PDF or Word document)

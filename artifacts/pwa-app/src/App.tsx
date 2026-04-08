@@ -21,12 +21,18 @@ import Documents from "@/pages/Documents";
 import Admin from "@/pages/Admin";
 import CbaAssistant from "@/pages/CbaAssistant";
 
+import MemberPortalProfile from "@/pages/portal/MemberPortalProfile";
+import MemberPortalGrievances from "@/pages/portal/MemberPortalGrievances";
+import MemberPortalBulletins from "@/pages/portal/MemberPortalBulletins";
+import MemberPortalSignCard from "@/pages/portal/MemberPortalSignCard";
+
 export interface AuthUser {
   id: number;
   username: string;
   displayName: string;
   role: string;
   permissions: string[];
+  linkedMemberId: number | null;
 }
 
 interface AuthContextValue {
@@ -67,7 +73,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function StewardRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -91,6 +97,19 @@ function Router() {
       <Route path="/admin" component={Admin} />
 
       <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function MemberPortalRouter() {
+  return (
+    <Switch>
+      <Route path="/portal" component={MemberPortalProfile} />
+      <Route path="/portal/grievances" component={MemberPortalGrievances} />
+      <Route path="/portal/bulletins" component={MemberPortalBulletins} />
+      <Route path="/portal/sign-card" component={MemberPortalSignCard} />
+      <Route path="/" component={MemberPortalProfile} />
+      <Route component={MemberPortalProfile} />
     </Switch>
   );
 }
@@ -157,7 +176,7 @@ function App() {
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <IdleLogout />
-            <Router />
+            {user?.role === "member" ? <MemberPortalRouter /> : <StewardRouter />}
           </WouterRouter>
           <Toaster />
         </TooltipProvider>

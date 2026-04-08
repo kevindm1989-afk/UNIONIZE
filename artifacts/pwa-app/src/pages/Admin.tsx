@@ -94,9 +94,16 @@ export default function Admin() {
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState<"steward" | "chair" | "admin">("steward");
+  const [newRole, setNewRole] = useState<"steward" | "chair" | "admin" | "member">("steward");
+  const [newLinkedMemberId, setNewLinkedMemberId] = useState("");
   const [showNewPass, setShowNewPass] = useState(false);
   const [createdCred, setCreatedCred] = useState<{ username: string; password: string } | null>(null);
+
+  const { data: membersList = [] } = useQuery<{ id: number; name: string; employeeId: string | null }[]>({
+    queryKey: ["/members/list-simple"],
+    queryFn: () => fetchJson("/api/members?limit=500&simple=1"),
+    select: (d: any) => (Array.isArray(d.data) ? d.data : []).map((m: any) => ({ id: m.id, name: m.name, employeeId: m.employeeId })),
+  });
 
   const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
   const [resetPass, setResetPass] = useState("");
@@ -125,7 +132,7 @@ export default function Admin() {
       qc.invalidateQueries({ queryKey: ["/auth/users"] });
       setCreatedCred({ username: vars.username, password: vars.password });
       setCreateOpen(false);
-      setNewName(""); setNewUsername(""); setNewPassword(""); setNewRole("steward");
+      setNewName(""); setNewUsername(""); setNewPassword(""); setNewRole("steward"); setNewLinkedMemberId("");
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -147,7 +154,9 @@ export default function Admin() {
 
   const handleCreate = () => {
     if (!newName.trim() || !newUsername.trim() || !newPassword.trim()) return;
-    createUser.mutate({ displayName: newName, username: newUsername, password: newPassword, role: newRole });
+    const body: Record<string, unknown> = { displayName: newName, username: newUsername, password: newPassword, role: newRole };
+    if (newRole === "member" && newLinkedMemberId) body.linkedMemberId = parseInt(newLinkedMemberId, 10);
+    createUser.mutate(body);
   };
 
   // ── Role Permissions ────────────────────────────────────────────────────────
@@ -738,9 +747,37 @@ export default function Admin() {
       <Sheet open={createOpen} onOpenChange={(o) => { if (!createUser.isPending) setCreateOpen(o); }}>
         <SheetContent side="bottom" className="h-auto max-h-[92dvh] rounded-t-2xl overflow-y-auto">
           <SheetHeader className="mb-5">
-            <SheetTitle className="text-lg font-extrabold tracking-tight">Add Steward Account</SheetTitle>
+            <SheetTitle className="text-lg font-extrabold tracking-tight">Add Account</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 pb-8">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Role</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { value: "steward", label: "Steward" },
+                  { value: "chair", label: "Chair" },
+                  { value: "member", label: "Member" },
+                ] as const).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => { setNewRole(value); setNewLinkedMemberId(""); }}
+                    className={cn(
+                      "flex-1 h-11 rounded-xl text-sm font-bold border transition-all min-w-[80px]",
+                      newRole === value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card border-border text-muted-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {newRole === "member" && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Member accounts access the self-service portal only.
+                </p>
+              )}
+            </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name</label>
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Jane Smith" className="h-12 rounded-xl bg-card" />
@@ -774,28 +811,25 @@ export default function Admin() {
                 </button>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Role</label>
-              <div className="flex gap-2">
-                {([
-                  { value: "steward", label: "Steward" },
-                  { value: "chair", label: "Chair" },
-                ] as const).map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setNewRole(value)}
-                    className={cn(
-                      "flex-1 h-11 rounded-xl text-sm font-bold border transition-all",
-                      newRole === value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card border-border text-muted-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+            {newRole === "member" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Link to Member Record (optional)
+                </label>
+                <select
+                  value={newLinkedMemberId}
+                  onChange={(e) => setNewLinkedMemberId(e.target.value)}
+                  className="w-full h-12 rounded-xl bg-card border border-input px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— No member record linked —</option>
+                  {membersList.map((m) => (
+                    <option key={m.id} value={String(m.id)}>
+                      {m.name}{m.employeeId ? ` (#${m.employeeId})` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setCreateOpen(false)}>Cancel</Button>
               <Button

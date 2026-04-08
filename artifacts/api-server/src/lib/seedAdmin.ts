@@ -181,6 +181,31 @@ export async function ensureSessionTable(): Promise<void> {
   }
 }
 
+export async function ensureMemberPortalEnhancements(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE members
+        ADD COLUMN IF NOT EXISTS signature_data TEXT,
+        ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS engagement_level VARCHAR(20) DEFAULT 'unknown',
+        ADD COLUMN IF NOT EXISTS shop_floor_leader BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS organizing_notes TEXT;
+    `);
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS linked_member_id INTEGER;
+    `);
+    await client.query(`
+      ALTER TABLE documents
+        ADD COLUMN IF NOT EXISTS category VARCHAR(50) NOT NULL DEFAULT 'cba',
+        ADD COLUMN IF NOT EXISTS uploaded_by INTEGER;
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureGrievanceNotesTable(): Promise<void> {
   const client = await pool.connect();
   try {

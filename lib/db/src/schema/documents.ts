@@ -1,8 +1,9 @@
-import { pgTable, serial, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 
 export const documentsTable = pgTable("documents", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull().default("cba"),
   description: text("description"),
   filename: varchar("filename", { length: 255 }).notNull(),
   objectPath: varchar("object_path", { length: 512 }).notNull(),
@@ -12,6 +13,7 @@ export const documentsTable = pgTable("documents", {
   effectiveDate: varchar("effective_date", { length: 20 }),
   expirationDate: varchar("expiration_date", { length: 20 }),
   notes: text("notes"),
+  uploadedBy: integer("uploaded_by"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
