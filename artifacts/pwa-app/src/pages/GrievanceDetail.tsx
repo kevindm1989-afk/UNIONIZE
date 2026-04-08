@@ -11,7 +11,7 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetRecentActivityQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,9 +21,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { ChevronLeft, Trash2, MessageSquare, ArrowRightCircle, Layers, Plus, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
@@ -32,6 +32,37 @@ const statusColors: Record<string, string> = {
   pending_hearing: "bg-orange-100 text-orange-800 border-orange-200",
   resolved: "bg-green-100 text-green-800 border-green-200",
   withdrawn: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+interface GrievanceNote {
+  id: number;
+  grievanceId: number;
+  userId: number | null;
+  authorName: string | null;
+  content: string;
+  noteType: string;
+  createdAt: string;
+}
+
+function renderContent(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>,
+  );
+}
+
+function NoteIcon({ type }: { type: string }) {
+  if (type === "status_change") return <ArrowRightCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />;
+  if (type === "step_change") return <Layers className="w-4 h-4 text-blue-500 flex-shrink-0" />;
+  return <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />;
+}
+
+const fetchJson = async (url: string, opts?: RequestInit) => {
+  const res = await fetch(url, { credentials: "include", ...opts });
+  if (!res.ok) throw new Error("Request failed");
+  return res.json();
 };
 
 export default function GrievanceDetail() {
@@ -58,6 +89,8 @@ export default function GrievanceDetail() {
   const [accommodationRequest, setAccommodationRequest] = useState(false);
   const initialized = useRef(false);
 
+  const [newNote, setNewNote] = useState("");
+
   useEffect(() => {
     if (grievance && !initialized.current) {
       initialized.current = true;
@@ -73,6 +106,27 @@ export default function GrievanceDetail() {
     }
   }, [grievance]);
 
+  const notesKey = ["grievance-notes", grievanceId];
+
+  const { data: activityNotes = [], refetch: refetchNotes } = useQuery<GrievanceNote[]>({
+    queryKey: notesKey,
+    queryFn: () => fetchJson(`/api/grievances/${grievanceId}/notes`),
+    enabled: !!grievanceId,
+  });
+
+  const addNote = useMutation({
+    mutationFn: (content: string) =>
+      fetchJson(`/api/grievances/${grievanceId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      }),
+    onSuccess: () => {
+      setNewNote("");
+      refetchNotes();
+    },
+  });
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getGetGrievanceQueryKey(grievanceId) });
     queryClient.invalidateQueries({ queryKey: getListGrievancesQueryKey() });
@@ -82,7 +136,15 @@ export default function GrievanceDetail() {
   };
 
   const handleUpdate = (field: string, value: unknown) => {
-    updateGrievance.mutate({ id: grievanceId, data: { [field]: value } }, { onSuccess: invalidateAll });
+    updateGrievance.mutate(
+      { id: grievanceId, data: { [field]: value } },
+      {
+        onSuccess: () => {
+          invalidateAll();
+          setTimeout(() => refetchNotes(), 300);
+        },
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -242,7 +304,60 @@ export default function GrievanceDetail() {
             </div>
           )}
 
-          <div className="pt-2 text-center text-xs text-muted-foreground space-y-0.5">
+          {/* ── Activity Timeline ─────────────────────────────────────────── */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Activity</span>
+            </div>
+
+            <div className="flex gap-2">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Add a note…"
+                className="min-h-[60px] rounded-xl bg-card resize-none text-sm flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && newNote.trim()) {
+                    addNote.mutate(newNote.trim());
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                className="self-end rounded-xl h-9 w-9 p-0 flex-shrink-0"
+                disabled={!newNote.trim() || addNote.isPending}
+                onClick={() => { if (newNote.trim()) addNote.mutate(newNote.trim()); }}
+              >
+                {addNote.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              </Button>
+            </div>
+
+            {activityNotes.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-3">No activity yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {activityNotes.map((note) => (
+                  <div key={note.id} className="flex gap-3 p-3 rounded-xl bg-card border border-border">
+                    <NoteIcon type={note.noteType} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-xs font-semibold">{note.authorName ?? "System"}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {format(parseISO(note.createdAt), "MMM d 'at' h:mm a")}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-0.5 text-foreground leading-snug">
+                        {renderContent(note.content)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 text-center text-xs text-muted-foreground space-y-0.5 pb-6">
             <p>Filed {format(new Date(grievance.filedDate), "MMMM d, yyyy")}</p>
             <p>Last updated {format(new Date(grievance.updatedAt), "MMM d 'at' h:mm a")}</p>
           </div>

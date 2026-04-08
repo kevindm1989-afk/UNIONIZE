@@ -9,6 +9,8 @@ import documentsRouter from "./documents";
 import authRouter from "./auth";
 import anthropicRouter from "./anthropic/index";
 import settingsRouter from "./settings";
+import auditLogsRouter from "./audit-logs";
+import grievanceNotesRouter from "./grievance-notes";
 import { requirePermission } from "../lib/permissions";
 
 const router: IRouter = Router();
@@ -34,5 +36,7 @@ router.use(requirePermission("documents.view"), storageRouter);
 router.use("/documents", requirePermission("documents.view"), documentsRouter);
 router.use("/anthropic", anthropicRouter);
 router.use("/settings", requirePermission("members.edit"), settingsRouter);
+router.use("/audit-logs", requirePermission("members.edit"), auditLogsRouter);
+router.use("/grievances/:grievanceId/notes", requirePermission("grievances.view"), grievanceNotesRouter);
 
 export default router;

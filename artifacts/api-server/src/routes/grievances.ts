@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, grievancesTable, membersTable, localSettingsTable } from "@workspace/db";
+import { db, grievancesTable, membersTable, localSettingsTable, grievanceNotesTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
 import { logAudit } from "../lib/auditLog";
@@ -279,6 +279,40 @@ router.patch("/:id", requirePermission("grievances.file"), async (req, res) => {
   await logAudit(req, "update", "grievance", grievance.id, formatGrievance(existing), formatGrievance(grievance));
 
   const memberName = await lookupMemberName(grievance.memberId);
+
+  // Auto-create timeline notes for status / step changes
+  const actorId = req.session?.userId ?? null;
+  let actorName: string | null = null;
+  if (actorId) {
+    const [u] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, actorId));
+    actorName = u?.displayName ?? null;
+  }
+  if (d.status !== undefined && d.status !== existing.status) {
+    const LABELS: Record<string, string> = {
+      open: "Open", pending_response: "Pending Response", pending_hearing: "Pending Hearing",
+      resolved: "Resolved", withdrawn: "Withdrawn",
+    };
+    db.insert(grievanceNotesTable).values({
+      grievanceId: grievance.id,
+      userId: actorId,
+      authorName: actorName,
+      content: `Status changed from **${LABELS[existing.status] ?? existing.status}** to **${LABELS[grievance.status] ?? grievance.status}**.`,
+      noteType: "status_change",
+    }).catch(() => undefined);
+  }
+  if (d.step !== undefined && d.step !== existing.step) {
+    const STEP_NAMES: Record<number, string> = {
+      1: "Step 1 — Informal", 2: "Step 2 — Written", 3: "Step 3 — Meeting",
+      4: "Step 4 — Mediation", 5: "Step 5 — Arbitration",
+    };
+    db.insert(grievanceNotesTable).values({
+      grievanceId: grievance.id,
+      userId: actorId,
+      authorName: actorName,
+      content: `Grievance advanced to **${STEP_NAMES[grievance.step] ?? `Step ${grievance.step}`}**.`,
+      noteType: "step_change",
+    }).catch(() => undefined);
+  }
 
   // Fire-and-forget status change notification
   if (d.status !== undefined && d.status !== existing.status) {

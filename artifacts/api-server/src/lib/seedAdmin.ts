@@ -181,6 +181,28 @@ export async function ensureSessionTable(): Promise<void> {
   }
 }
 
+export async function ensureGrievanceNotesTable(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS grievance_notes (
+        id SERIAL PRIMARY KEY,
+        grievance_id INTEGER NOT NULL,
+        user_id INTEGER,
+        author_name TEXT,
+        content TEXT NOT NULL,
+        note_type TEXT NOT NULL DEFAULT 'note',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_grievance_notes_grievance ON grievance_notes (grievance_id);
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function seedAdminUser(): Promise<void> {
   try {
     const [existing] = await db

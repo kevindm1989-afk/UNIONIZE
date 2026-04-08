@@ -17,6 +17,7 @@ import {
   ensureLocalSettingsTable,
   ensureGrievanceEnhancements,
   ensureMemberEnhancements,
+  ensureGrievanceNotesTable,
   seedDefaultPermissions,
 } from "./lib/seedAdmin";
 const PgStore = connectPgSimple(session);
@@ -75,6 +76,7 @@ ensureSessionTable()
   .then(() => ensureAiTables())
   .then(() => ensureGrievanceEnhancements())
   .then(() => ensureMemberEnhancements())
+  .then(() => ensureGrievanceNotesTable())
   .then(() => seedAdminUser())
   .then(() => seedDefaultPermissions())
   .catch((err) => logger.error({ err }, "Startup tasks failed"));

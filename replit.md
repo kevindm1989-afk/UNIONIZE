@@ -29,6 +29,7 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 
 - **members** — union member records (+ seniority_date, dues_status, dues_last_paid, shift, classification_date)
 - **grievances** — grievance tracking (steps 1–5 incl. Arbitration, accommodation_request flag; due_date auto-calculated from local_settings)
+- **grievance_notes** — per-grievance activity timeline (manual notes + auto-logged status/step changes)
 - **announcements** — bulletins/announcements (title, content, category, is_urgent, published_at)
 - **member_files** — attached documents per member (category: general/discipline/grievance)
 - **audit_logs** — immutable trail of create/update/delete on members & grievances
@@ -42,10 +43,13 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 - `GET/POST /api/grievances` — grievance list & create
 - `GET/PATCH/DELETE /api/grievances/:id` — grievance CRUD
 - `GET /api/grievances/stats/summary` — grievance stats
+- `GET /api/grievances/:id/notes` — per-grievance activity timeline
+- `POST /api/grievances/:id/notes` — add a note (requires grievances.file); auto-notes on status/step changes
 - `GET/POST /api/announcements` — bulletin list & create
 - `GET/PATCH/DELETE /api/announcements/:id` — bulletin CRUD
 - `GET /api/dashboard/summary` — dashboard stats
 - `GET /api/dashboard/recent-activity` — recent grievances & bulletins
+- `GET /api/audit-logs` — admin audit trail (requires members.edit); supports entityType filter
 
 ## PWA Pages
 

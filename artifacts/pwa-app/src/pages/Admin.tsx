@@ -12,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
   ChevronLeft, Users, ClipboardList, CheckCircle, XCircle,
-  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy, Settings, Mail,
+  Plus, ShieldCheck, ShieldOff, RefreshCw, Loader2, Eye, EyeOff, Copy, Settings, Mail, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-type Tab = "requests" | "users" | "roles" | "config";
+type Tab = "requests" | "users" | "roles" | "config" | "audit";
 
 interface AccessRequest {
   id: number;
@@ -211,6 +211,24 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  // ── Audit Logs ───────────────────────────────────────────────────────────────
+  interface AuditLogRow {
+    id: number;
+    action: string;
+    entity_type: string;
+    entity_id: number;
+    ip_address: string | null;
+    created_at: string;
+    actor_name: string | null;
+  }
+  const [auditEntityType, setAuditEntityType] = useState<string>("all");
+  const { data: auditData, isLoading: loadingAudit, refetch: refetchAudit } = useQuery<{ logs: AuditLogRow[]; total: number }>({
+    queryKey: ["/audit-logs", auditEntityType],
+    queryFn: () =>
+      fetchJson(`/api/audit-logs?limit=50${auditEntityType !== "all" ? `&entityType=${auditEntityType}` : ""}`),
+    enabled: tab === "audit",
+  });
+
   function initSettings(data: SettingsMap) {
     const init: Record<string, string> = {};
     for (const key of ["admin_email", "portal_url",
@@ -305,6 +323,7 @@ export default function Admin() {
             { id: "users" as Tab, label: "Stewards", icon: Users, count: null },
             { id: "roles" as Tab, label: "Roles", icon: Settings, count: null },
             { id: "config" as Tab, label: "Config", icon: Mail, count: null },
+            { id: "audit" as Tab, label: "Audit", icon: History, count: null },
           ]).map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
@@ -601,6 +620,71 @@ export default function Admin() {
                   {saveSettings.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Settings"}
                 </Button>
               </>
+            )}
+          </section>
+        )}
+
+        {/* Audit Log Tab */}
+        {tab === "audit" && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <select
+                className="flex-1 h-9 rounded-xl border border-border bg-card text-sm px-3 font-medium"
+                value={auditEntityType}
+                onChange={(e) => setAuditEntityType(e.target.value)}
+              >
+                <option value="all">All Entities</option>
+                <option value="member">Members</option>
+                <option value="grievance">Grievances</option>
+                <option value="user">Users</option>
+              </select>
+              <button
+                onClick={() => refetchAudit()}
+                className="h-9 w-9 flex items-center justify-center rounded-xl border border-border bg-card hover:bg-muted transition-colors"
+              >
+                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {loadingAudit ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !auditData?.logs.length ? (
+              <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
+                <History className="w-9 h-9 mx-auto mb-3 text-muted-foreground opacity-20" />
+                <p className="text-sm font-semibold text-muted-foreground">No audit events yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {auditData.logs.map((log) => {
+                  const ACTION_COLORS: Record<string, string> = {
+                    create: "bg-green-100 text-green-700 border-green-200",
+                    update: "bg-blue-100 text-blue-700 border-blue-200",
+                    delete: "bg-red-100 text-red-700 border-red-200",
+                  };
+                  return (
+                    <div key={log.id} className="bg-card border border-border rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded border", ACTION_COLORS[log.action] ?? "bg-muted text-muted-foreground border-border")}>
+                          {log.action}
+                        </span>
+                        <span className="text-xs font-semibold capitalize">{log.entity_type} #{log.entity_id}</span>
+                        <span className="ml-auto text-[11px] text-muted-foreground">
+                          {format(new Date(log.created_at), "MMM d 'at' h:mm a")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        by <span className="font-medium text-foreground">{log.actor_name ?? "System"}</span>
+                        {log.ip_address ? ` · ${log.ip_address}` : ""}
+                      </p>
+                    </div>
+                  );
+                })}
+                {auditData.total > 50 && (
+                  <p className="text-xs text-center text-muted-foreground pt-1">Showing latest 50 of {auditData.total} events</p>
+                )}
+              </div>
             )}
           </section>
         )}
