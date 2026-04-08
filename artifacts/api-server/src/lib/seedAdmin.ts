@@ -107,6 +107,9 @@ export async function ensureAccessRequestEnhancements(): Promise<void> {
         ADD COLUMN IF NOT EXISTS department TEXT,
         ADD COLUMN IF NOT EXISTS shift TEXT,
         ADD COLUMN IF NOT EXISTS message TEXT,
+        ADD COLUMN IF NOT EXISTS requested_role TEXT,
+        ADD COLUMN IF NOT EXISTS role_justification TEXT,
+        ADD COLUMN IF NOT EXISTS approved_role TEXT,
         ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
         ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
     `);

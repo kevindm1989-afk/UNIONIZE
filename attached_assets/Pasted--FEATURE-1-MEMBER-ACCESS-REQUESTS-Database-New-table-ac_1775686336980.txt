@@ -1,0 +1,90 @@
+## FEATURE 1 — MEMBER ACCESS REQUESTS
+
+### Database
+- New table: access_requests
+  - id
+  - first_name (text)
+  - last_name (text)
+  - email (text, unique)
+  - phone (text)
+  - employee_id (text)
+  - department (text)
+  - shift (enum: days | afternoons | nights | rotating)
+  - requested_role (enum: member | steward | co_chair) — applicant self-selects their role
+  - role_justification (text, nullable) — required if requested_role is steward or co_chair
+  - message (text, nullable) — optional note from applicant
+  - status (enum: pending | approved | rejected, default: pending)
+  - approved_role (enum: member | steward | co_chair | admin, nullable) — admin sets the ACTUAL role on approval, may differ from requested_role
+  - reviewed_by (FK to users, nullable)
+  - reviewed_at (timestamp, nullable)
+  - rejection_reason (text, nullable)
+  - created_at (timestamp)
+
+### API Routes
+- POST /api/access-requests — public endpoint, no auth required
+  - Rate limit: max 3 submissions per IP per hour
+  - Validate all fields with Zod
+  - If requested_role is steward or co_chair, role_justification is required — return 422 if missing
+  - Check for duplicate email or employee_id — return 409 if already exists in members or pending access_requests
+  - On success: trigger push notification + email to all admin users:
+    "New access request from [name] — Requested role: [requested_role]"
+- GET /api/access-requests — list all requests (admin only)
+  - Filter by status: ?status=pending|approved|rejected
+  - Filter by requested_role: ?role=member|steward|co_chair
+  - Sort: pending first, steward/co_chair requests flagged at top of pending queue
+  - then by created_at desc
+- GET /api/access-requests/:id — get single request (admin only)
+- PATCH /api/access-requests/:id/approve — approve request (admin only)
+  - Request body must include approved_role (enum: member | steward | co_chair | admin)
+  - Admin can approve at a different role than requested (e.g. applicant requests steward, admin approves as member)
+  - If approved_role differs from requested_role, a note is added to the audit log flagging the discrepancy
+  - Creates new record in members table using request data
+  - Creates new record in users table with the approved_role and a temporary password (random 12 chars)
+  - Sets access_request status to approved, reviewed_by, reviewed_at, approved_role
+  - Sends email to applicant with login credentials, their approved role, and welcome message
+  - If approved_role differs from requested_role, email includes: "Note: your account has been set up as [approved_role]."
+  - Logs to audit_log
+- PATCH /api/access-requests/:id/reject — reject request (admin only)
+  - Requires rejection_reason in request body
+  - Sets status to rejected, reviewed_by, reviewed_at, rejection_reason
+  - Sends email to applicant notifying them of rejection with reason
+  - Logs to audit_log
+- DELETE /api/access-requests/:id — delete request (admin only, pending only)
+
+### Frontend — Public Request Form
+- New public route: /request-access — no login required
+- Clean, mobile-friendly form with fields:
+  - First name, Last name, Email, Phone, Employee ID, Department, Shift (dropdown)
+  - Requested Role (radio buttons): 
+    - "Member" — I am a bargaining unit member
+    - "Steward" — I am an elected union steward
+    - "Co-Chair" — I am a committee co-chair
+  - Role Justification (textarea) — conditionally shown ONLY if Steward or Co-Chair is selected
+    - Label: "Please describe your role and how long you have held it"
+    - Required if steward or co_chair selected
+  - Message (optional textarea) — any additional information
+- Client-side Zod validation before submit
+- On success: show confirmation message "Your request has been submitted. An administrator will review it and contact you shortly."
+- On duplicate: show clear message "An account with this email or employee ID already exists or is pending review."
+- Link to this page from the login screen: "Request Access" button below the login form
+
+### Frontend — Admin Request Queue
+- New page: /admin/access-requests (admin only)
+- Tabbed view: Pending | Approved | Rejected
+- Pending tab shows count badge — steward and co_chair requests show a distinct color badge to draw attention
+- Each request card shows:
+  - Name, employee ID, department, shift, submitted date
+  - Requested role badge (color coded: grey = member, blue = steward, purple = co_chair)
+  - Role justification (if provided) — shown in a highlighted box
+  - Message (if provided)
+- Action buttons on pending cards: "Approve" (green) | "Reject" (red)
+- Approve opens a modal with:
+  - Applicant summary
+  - "Approve as Role" dropdown: member | steward | co_chair | admin
+  - Default selection pre-filled with requested_role
+  - If admin changes the role: show inline warning "You are approving at a different role than requested"
+  - Confirm button: "Approve & Send Credentials"
+- Reject opens a modal requiring rejection_reason text before confirming
+- Approved tab shows: name, requested role, approved role (flagged if different), reviewer, date
+- Rejected tab shows: name, requested role, rejection reason, reviewer, date
+- Push notification badge on admin nav when new requests arrive

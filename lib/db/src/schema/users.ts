@@ -30,6 +30,10 @@ export const accessRequestsTable = pgTable("access_requests", {
   department: text("department"),
   shift: text("shift"),
   message: text("message"),
+  // Role request fields
+  requestedRole: text("requested_role"),
+  roleJustification: text("role_justification"),
+  approvedRole: text("approved_role"),
   rejectionReason: text("rejection_reason"),
   reviewedBy: integer("reviewed_by"),
   // Status + timestamps

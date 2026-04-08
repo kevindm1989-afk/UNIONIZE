@@ -3,7 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
 import { db, accessRequestsTable, membersTable, usersTable } from "@workspace/db";
-import { eq, and, or, ilike, desc, sql } from "drizzle-orm";
+import { eq, and, ilike, desc, sql } from "drizzle-orm";
 import { logAudit } from "../lib/auditLog";
 import {
   sendNewMemberRequestNotification,
@@ -35,6 +35,9 @@ export const accessRequestRateLimit = rateLimit({
 });
 
 // ─── Validation ───────────────────────────────────────────────────────────────
+const ROLE_ENUM = ["member", "steward", "co_chair"] as const;
+type RequestedRole = typeof ROLE_ENUM[number];
+
 const CreateRequestSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
@@ -43,19 +46,29 @@ const CreateRequestSchema = z.object({
   employeeId: z.string().max(50).optional(),
   department: z.string().max(100).optional(),
   shift: z.enum(["days", "afternoons", "nights", "rotating"]).optional(),
+  requestedRole: z.enum(ROLE_ENUM).default("member"),
+  roleJustification: z.string().max(2000).optional(),
   message: z.string().max(1000).optional(),
-});
+}).refine(
+  (d) => {
+    if (d.requestedRole === "steward" || d.requestedRole === "co_chair") {
+      return !!d.roleJustification?.trim();
+    }
+    return true;
+  },
+  { message: "Role justification is required for steward and co-chair requests", path: ["roleJustification"] }
+);
 
 // ─── POST /api/access-requests — public, rate-limited ────────────────────────
 router.post("/", accessRequestRateLimit, async (req: Request, res: Response) => {
   const parsed = CreateRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request data", code: "VALIDATION_ERROR", details: parsed.error.issues });
+    res.status(422).json({ error: "Invalid request data", code: "VALIDATION_ERROR", details: parsed.error.issues });
     return;
   }
   const d = parsed.data;
 
-  // Duplicate check: email in members or pending access_requests
+  // Duplicate check: email in members
   const [existingMember] = await db
     .select({ id: membersTable.id })
     .from(membersTable)
@@ -67,14 +80,14 @@ router.post("/", accessRequestRateLimit, async (req: Request, res: Response) => 
     return;
   }
 
-  // Check email in access_requests
+  // Duplicate check: email in pending access_requests
   const emailConflict = await db
     .select({ id: accessRequestsTable.id })
     .from(accessRequestsTable)
     .where(
       and(
         eq(accessRequestsTable.status, "pending"),
-        sql`lower(email) = lower(${d.email})`
+        sql`lower(${accessRequestsTable.email}) = lower(${d.email})`
       )
     )
     .limit(1);
@@ -84,7 +97,7 @@ router.post("/", accessRequestRateLimit, async (req: Request, res: Response) => 
     return;
   }
 
-  // Check employeeId in members or pending requests
+  // Duplicate check: employeeId in members and pending requests
   if (d.employeeId) {
     const [empMember] = await db
       .select({ id: membersTable.id })
@@ -93,6 +106,22 @@ router.post("/", accessRequestRateLimit, async (req: Request, res: Response) => 
       .limit(1);
 
     if (empMember) {
+      res.status(409).json({ error: "An account with this email or employee ID already exists or is pending review.", code: "DUPLICATE" });
+      return;
+    }
+
+    const empConflict = await db
+      .select({ id: accessRequestsTable.id })
+      .from(accessRequestsTable)
+      .where(
+        and(
+          eq(accessRequestsTable.status, "pending"),
+          sql`lower(${accessRequestsTable.employeeId}) = lower(${d.employeeId})`
+        )
+      )
+      .limit(1);
+
+    if (empConflict.length > 0) {
       res.status(409).json({ error: "An account with this email or employee ID already exists or is pending review.", code: "DUPLICATE" });
       return;
     }
@@ -114,19 +143,22 @@ router.post("/", accessRequestRateLimit, async (req: Request, res: Response) => 
       employeeId: d.employeeId ?? null,
       department: d.department ?? null,
       shift: d.shift ?? null,
+      requestedRole: d.requestedRole,
+      roleJustification: d.roleJustification ?? null,
       message: d.message ?? null,
     })
     .returning();
 
   res.status(201).json({ ok: true, id: request.id });
 
-  // Fire-and-forget
+  // Fire-and-forget admin notification
   sendNewMemberRequestNotification({
     firstName: d.firstName,
     lastName: d.lastName,
     email: d.email,
     employeeId: d.employeeId ?? null,
     department: d.department ?? null,
+    requestedRole: d.requestedRole,
   }).catch(() => {});
 });
 
@@ -135,17 +167,25 @@ router.get("/", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
 
   const status = typeof req.query.status === "string" ? req.query.status : undefined;
+  const role = typeof req.query.role === "string" ? req.query.role : undefined;
+
   const conditions = [];
   if (status && ["pending", "approved", "rejected"].includes(status)) {
     conditions.push(eq(accessRequestsTable.status, status));
+  }
+  if (role && ["member", "steward", "co_chair"].includes(role)) {
+    conditions.push(eq(accessRequestsTable.requestedRole, role));
   }
 
   const requests = await db
     .select()
     .from(accessRequestsTable)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(conditions.length ? (conditions.length === 1 ? conditions[0] : and(...conditions)) : undefined)
     .orderBy(
-      sql`CASE WHEN status = 'pending' THEN 0 ELSE 1 END`,
+      // Pending first
+      sql`CASE WHEN ${accessRequestsTable.status} = 'pending' THEN 0 ELSE 1 END`,
+      // Steward/co_chair requests at top of pending queue
+      sql`CASE WHEN ${accessRequestsTable.status} = 'pending' AND ${accessRequestsTable.requestedRole} IN ('steward', 'co_chair') THEN 0 ELSE 1 END`,
       desc(accessRequestsTable.createdAt)
     );
 
@@ -186,9 +226,21 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID", code: "INVALID_ID" }); return; }
 
+  // approvedRole can be specified; defaults to requestedRole or "member"
+  const APPROVED_ROLES = ["member", "steward", "co_chair", "admin"] as const;
+  const bodyRole = req.body?.approvedRole;
+  if (bodyRole && !APPROVED_ROLES.includes(bodyRole)) {
+    res.status(400).json({ error: "Invalid approvedRole", code: "VALIDATION_ERROR" });
+    return;
+  }
+
   const [request] = await db.select().from(accessRequestsTable).where(eq(accessRequestsTable.id, id)).limit(1);
   if (!request) { res.status(404).json({ error: "Not found", code: "NOT_FOUND" }); return; }
   if (request.status !== "pending") { res.status(400).json({ error: "Request is not pending", code: "INVALID_STATUS" }); return; }
+
+  const approvedRole: string = bodyRole ?? request.requestedRole ?? "member";
+  const requestedRole: string = request.requestedRole ?? "member";
+  const roleDiffers = approvedRole !== requestedRole;
 
   // Generate temp password
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
@@ -213,7 +265,7 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
     })
     .returning();
 
-  // Create user account
+  // Create user account with the approved role
   let newUser;
   try {
     [newUser] = await db
@@ -222,7 +274,7 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
         username: request.username,
         displayName,
         passwordHash,
-        role: "member",
+        role: approvedRole,
         isActive: true,
         linkedMemberId: newMember.id,
       })
@@ -241,12 +293,19 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
   // Update request status
   await db
     .update(accessRequestsTable)
-    .set({ status: "approved", reviewedBy: req.session.userId, reviewedAt: new Date() })
+    .set({ status: "approved", approvedRole, reviewedBy: req.session.userId, reviewedAt: new Date() })
     .where(eq(accessRequestsTable.id, id));
 
-  await logAudit(req, "create", "member", newMember.id, null, { name: displayName, fromRequest: id });
+  // Log to audit_log — flag if role was changed
+  await logAudit(req, "create", "member", newMember.id, null, {
+    name: displayName,
+    fromRequest: id,
+    requestedRole,
+    approvedRole,
+    roleDiffers,
+  });
 
-  res.json({ ok: true, user: newUser, memberId: newMember.id, tempPassword });
+  res.json({ ok: true, user: newUser, memberId: newMember.id, tempPassword, approvedRole, roleDiffers });
 
   // Fire-and-forget email
   if (request.email) {
@@ -255,6 +314,8 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
       recipientName: displayName,
       username: request.username,
       tempPassword,
+      approvedRole,
+      requestedRole,
     }).catch(() => {});
   }
 });

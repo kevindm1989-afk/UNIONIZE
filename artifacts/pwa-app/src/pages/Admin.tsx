@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import { format } from "date-fns";
 
 type Tab = "requests" | "users" | "roles" | "config" | "audit";
 
+type ApprovedRole = "member" | "steward" | "co_chair" | "admin";
+
 interface AccessRequest {
   id: number;
   name: string;
@@ -32,11 +34,27 @@ interface AccessRequest {
   department: string | null;
   shift: string | null;
   message: string | null;
+  requestedRole: string | null;
+  roleJustification: string | null;
+  approvedRole: string | null;
   status: "pending" | "approved" | "rejected";
   rejectionReason: string | null;
   reviewerName: string | null;
   reviewedAt: string | null;
   createdAt: string;
+}
+
+function roleBadgeClass(role: string | null) {
+  if (role === "co_chair") return "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400";
+  if (role === "steward") return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+  return "bg-muted text-muted-foreground";
+}
+function roleLabel(role: string | null) {
+  if (role === "co_chair") return "Co-Chair";
+  if (role === "steward") return "Steward";
+  if (role === "admin") return "Admin";
+  if (role === "member") return "Member";
+  return role ?? "Member";
 }
 
 interface AppUser {
@@ -72,21 +90,39 @@ export default function Admin() {
   });
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const elevatedPendingCount = requests.filter(
+    (r) => r.status === "pending" && (r.requestedRole === "steward" || r.requestedRole === "co_chair")
+  ).length;
 
-  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [approveTarget, setApproveTarget] = useState<AccessRequest | null>(null);
+  const [approveAsRole, setApproveAsRole] = useState<ApprovedRole>("member");
   const [denyTarget, setDenyTarget] = useState<AccessRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [tempPassword, setTempPassword] = useState<{ display: string; username: string } | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ display: string; username: string; approvedRole: string; roleDiffers: boolean } | null>(null);
   const [showPass, setShowPass] = useState(false);
 
+  const openApproveModal = (r: AccessRequest) => {
+    setApproveTarget(r);
+    setApproveAsRole((r.requestedRole as ApprovedRole) ?? "member");
+  };
+
   const approveMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetchJson(`/api/access-requests/${id}/approve`, { method: "PATCH" }),
+    mutationFn: ({ id, approvedRole }: { id: number; approvedRole: ApprovedRole }) =>
+      fetchJson(`/api/access-requests/${id}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvedRole }),
+      }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["/access-requests"] });
       qc.invalidateQueries({ queryKey: ["/auth/users"] });
-      setApprovingId(null);
-      setTempPassword({ display: data.tempPassword, username: data.user.username });
+      setApproveTarget(null);
+      setTempPassword({
+        display: data.tempPassword,
+        username: data.user.username,
+        approvedRole: data.approvedRole ?? "member",
+        roleDiffers: data.roleDiffers ?? false,
+      });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -309,8 +345,8 @@ export default function Admin() {
   };
 
   const CredentialCard = ({
-    title, username, password, onClose,
-  }: { title: string; username: string; password: string; onClose: () => void }) => (
+    title, username, password, onClose, note,
+  }: { title: string; username: string; password: string; onClose: () => void; note?: ReactNode }) => (
     <div className="fixed inset-0 z-[60] flex items-end justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -319,8 +355,9 @@ export default function Admin() {
       <div className="relative z-10 bg-card border border-border rounded-2xl p-5 w-full max-w-[400px] shadow-2xl space-y-4">
         <h3 className="font-extrabold text-base tracking-tight">{title}</h3>
         <p className="text-sm text-muted-foreground">
-          Share these credentials with the steward. They should change their password after first login.
+          Share these credentials with the member. They should change their password after first login.
         </p>
+        {note && <div>{note}</div>}
         <div className="space-y-3">
           <div className="bg-muted rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div>
@@ -370,17 +407,17 @@ export default function Admin() {
         {/* Tabs */}
         <div className="flex gap-2 p-1 bg-muted rounded-xl">
           {([
-            { id: "requests" as Tab, label: "Requests", icon: ClipboardList, count: requestsFilter === "pending" ? requests.length : null },
-            { id: "users" as Tab, label: "Stewards", icon: Users, count: null },
-            { id: "roles" as Tab, label: "Roles", icon: Settings, count: null },
-            { id: "config" as Tab, label: "Config", icon: Mail, count: null },
-            { id: "audit" as Tab, label: "Audit", icon: History, count: null },
-          ]).map(({ id, label, icon: Icon, count }) => (
+            { id: "requests" as Tab, label: "Requests", icon: ClipboardList },
+            { id: "users" as Tab, label: "Stewards", icon: Users },
+            { id: "roles" as Tab, label: "Roles", icon: Settings },
+            { id: "config" as Tab, label: "Config", icon: Mail },
+            { id: "audit" as Tab, label: "Audit", icon: History },
+          ]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-all",
+                "flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-bold transition-all",
                 tab === id
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -388,9 +425,14 @@ export default function Admin() {
             >
               <Icon className="w-4 h-4" />
               {label}
-              {count !== null && count > 0 && (
-                <span className="ml-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
-                  {count}
+              {id === "requests" && pendingCount > 0 && (
+                <span className={cn(
+                  "ml-0.5 text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none",
+                  elevatedPendingCount > 0
+                    ? "bg-violet-600 text-white"
+                    : "bg-primary text-primary-foreground"
+                )}>
+                  {pendingCount}
                 </span>
               )}
             </button>
@@ -433,8 +475,13 @@ export default function Admin() {
             ) : (
               requests.map((r) => {
                 const displayName = r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
+                const isElevated = r.requestedRole === "steward" || r.requestedRole === "co_chair";
+                const roleDiffers = r.approvedRole && r.requestedRole && r.approvedRole !== r.requestedRole;
                 return (
-                  <div key={r.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div key={r.id} className={cn(
+                    "bg-card border rounded-xl p-4 space-y-3",
+                    r.status === "pending" && isElevated ? "border-violet-300 dark:border-violet-700" : "border-border"
+                  )}>
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -448,6 +495,12 @@ export default function Admin() {
                           )}>
                             {r.status}
                           </span>
+                          {/* Requested role badge */}
+                          {r.requestedRole && (
+                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", roleBadgeClass(r.requestedRole))}>
+                              {roleLabel(r.requestedRole)}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 font-mono">@{r.username}</p>
                       </div>
@@ -478,10 +531,32 @@ export default function Admin() {
                       )}
                     </div>
 
+                    {/* Role justification — highlighted box */}
+                    {r.roleJustification && (
+                      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-lg px-3 py-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">Role Justification</p>
+                        <p className="text-xs text-foreground/80 italic leading-relaxed">&ldquo;{r.roleJustification}&rdquo;</p>
+                      </div>
+                    )}
+
                     {(r.message || r.reason) && (
                       <p className="text-xs text-foreground/70 italic border-t border-border pt-2">
                         &ldquo;{r.message || r.reason}&rdquo;
                       </p>
+                    )}
+
+                    {/* Approved role — show discrepancy if differs */}
+                    {r.status === "approved" && r.approvedRole && (
+                      <div className={cn(
+                        "rounded-lg px-3 py-2 text-xs",
+                        roleDiffers ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40" : "bg-green-50 dark:bg-green-950/20"
+                      )}>
+                        <span className="text-muted-foreground">Approved as: </span>
+                        <span className={cn("font-bold", roleBadgeClass(r.approvedRole))}>{roleLabel(r.approvedRole)}</span>
+                        {roleDiffers && (
+                          <span className="text-amber-600 dark:text-amber-400 ml-1">(requested {roleLabel(r.requestedRole)})</span>
+                        )}
+                      </div>
                     )}
 
                     {r.status === "rejected" && r.rejectionReason && (
@@ -501,17 +576,9 @@ export default function Admin() {
                         <Button
                           size="sm"
                           className="flex-1 h-9 rounded-xl gap-1.5 font-bold"
-                          onClick={() => {
-                            setApprovingId(r.id);
-                            approveMutation.mutate(r.id);
-                          }}
-                          disabled={approveMutation.isPending && approvingId === r.id}
+                          onClick={() => openApproveModal(r)}
                         >
-                          {approveMutation.isPending && approvingId === r.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-3.5 h-3.5" />
-                          )}
+                          <CheckCircle className="w-3.5 h-3.5" />
                           Approve
                         </Button>
                         <Button
@@ -871,27 +938,94 @@ export default function Admin() {
         )}
       </div>
 
-      {/* Approve Confirm */}
-      <AlertDialog open={approvingId !== null} onOpenChange={(o) => { if (!o) setApprovingId(null); }}>
-        <AlertDialogContent className="max-w-[320px] rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Approve Access?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A steward account will be created and a temporary password generated for you to share.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2">
-            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full rounded-xl font-bold"
-              onClick={() => approvingId !== null && approveMutation.mutate(approvingId)}
-              disabled={approveMutation.isPending}
-            >
-              {approveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Approve & Create Account"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Approve Modal — with role selection */}
+      {approveTarget && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !approveMutation.isPending && setApproveTarget(null)} />
+          <div className="relative z-10 bg-card border border-border rounded-2xl p-5 w-full max-w-[420px] shadow-2xl space-y-4">
+            <div>
+              <h3 className="font-extrabold text-base tracking-tight">Approve Access Request</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {approveTarget.firstName && approveTarget.lastName
+                  ? `${approveTarget.firstName} ${approveTarget.lastName}`
+                  : approveTarget.name}
+                {approveTarget.department ? ` · ${approveTarget.department}` : ""}
+              </p>
+            </div>
+
+            {/* Applicant summary */}
+            <div className="bg-muted rounded-xl px-4 py-3 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-xs">Requested role</span>
+                <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", roleBadgeClass(approveTarget.requestedRole))}>
+                  {roleLabel(approveTarget.requestedRole)}
+                </span>
+              </div>
+              {approveTarget.email && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-xs">Email</span>
+                  <span className="text-xs font-medium truncate max-w-[200px]">{approveTarget.email}</span>
+                </div>
+              )}
+              {approveTarget.employeeId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-xs">Employee ID</span>
+                  <span className="text-xs font-mono font-medium">{approveTarget.employeeId}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Role justification preview */}
+            {approveTarget.roleJustification && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">Role Justification</p>
+                <p className="text-xs text-foreground/80 italic leading-relaxed line-clamp-3">&ldquo;{approveTarget.roleJustification}&rdquo;</p>
+              </div>
+            )}
+
+            {/* Approve as Role */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Approve as Role</label>
+              <select
+                value={approveAsRole}
+                onChange={(e) => setApproveAsRole(e.target.value as ApprovedRole)}
+                className="w-full h-11 rounded-xl border border-input bg-card px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="member">Member</option>
+                <option value="steward">Steward</option>
+                <option value="co_chair">Co-Chair</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+
+            {/* Role-differs warning */}
+            {approveAsRole !== (approveTarget.requestedRole ?? "member") && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  You are approving at a different role than requested. The applicant will be notified of their actual role via email.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2.5 pt-1">
+              <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold"
+                onClick={() => setApproveTarget(null)} disabled={approveMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-11 rounded-xl font-bold gap-1.5"
+                onClick={() => approveMutation.mutate({ id: approveTarget.id, approvedRole: approveAsRole })}
+                disabled={approveMutation.isPending}
+              >
+                {approveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                  <><CheckCircle className="w-4 h-4" />Approve & Send Credentials</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Deny Confirm */}
       <AlertDialog open={denyTarget !== null} onOpenChange={(o) => { if (!o) { setDenyTarget(null); setRejectReason(""); } }}>
@@ -1075,6 +1209,15 @@ export default function Admin() {
           username={tempPassword.username}
           password={tempPassword.display}
           onClose={() => { setTempPassword(null); setShowPass(false); }}
+          note={tempPassword.roleDiffers ? (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+              Approved as <strong>{roleLabel(tempPassword.approvedRole)}</strong> (role differed from requested). The applicant has been notified.
+            </div>
+          ) : tempPassword.approvedRole ? (
+            <div className="bg-muted rounded-xl px-3 py-2 text-xs text-muted-foreground">
+              Role: <span className={cn("font-bold", roleBadgeClass(tempPassword.approvedRole))}>{roleLabel(tempPassword.approvedRole)}</span>
+            </div>
+          ) : undefined}
         />
       )}
       {createdCred && (
