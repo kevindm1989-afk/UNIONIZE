@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, date, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, date, boolean, timestamp, index } from "drizzle-orm/pg-core";
 
 export const disciplineRecordsTable = pgTable("discipline_records", {
   id: serial("id").primaryKey(),
@@ -13,6 +13,9 @@ export const disciplineRecordsTable = pgTable("discipline_records", {
   grievanceId: integer("grievance_id"),
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  memberIdIdx: index("discipline_member_id_idx").on(table.memberId),
+  createdAtIdx: index("discipline_created_at_idx").on(table.createdAt),
+}));
 
 export type DisciplineRecord = typeof disciplineRecordsTable.$inferSelect;

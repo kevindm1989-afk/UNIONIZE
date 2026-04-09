@@ -29,3 +29,10 @@ timeoutMs = 20000
 [nix]
 channel = "stable-25_05"
 packages = ["flyctl"]
+
+[userenv]
+
+[userenv.shared]
+PORTAL_URL = "https://union-local-1285.fly.dev"
+EMAIL_FROM = "Local 1285 <noreply@union-local-1285.fly.dev>"
+VAPID_PUBLIC_KEY = "BL-uNV4X4ih0aUL6Fu4cE8brTHJNIDlb3C0KUCxSBAxQUFxzvgB8hke-J0xS1J2QysPM8HMwNAw5gFSjfokIhUk"

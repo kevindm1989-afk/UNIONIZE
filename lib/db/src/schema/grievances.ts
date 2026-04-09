@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, date, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, date, integer, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -21,7 +21,12 @@ export const grievancesTable = pgTable("grievances", {
   accommodationRequest: boolean("accommodation_request").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  memberIdIdx: index("grievances_member_id_idx").on(table.memberId),
+  statusIdx: index("grievances_status_idx").on(table.status),
+  createdAtIdx: index("grievances_created_at_idx").on(table.createdAt),
+  dueDateIdx: index("grievances_due_date_idx").on(table.dueDate),
+}));
 
 export const insertGrievanceSchema = createInsertSchema(grievancesTable).omit({
   id: true,

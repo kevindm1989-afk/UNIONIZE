@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, date, timestamp, index } from "drizzle-orm/pg-core";
 
 export const memberCommunicationLogTable = pgTable("member_communication_log", {
   id: serial("id").primaryKey(),
@@ -12,6 +12,9 @@ export const memberCommunicationLogTable = pgTable("member_communication_log", {
   summary: text("summary").notNull(),
   contactDate: date("contact_date").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  grievanceIdIdx: index("comms_grievance_id_idx").on(table.grievanceId),
+  memberIdIdx: index("comms_member_id_idx").on(table.memberId),
+}));
 
 export type MemberCommunicationLog = typeof memberCommunicationLogTable.$inferSelect;

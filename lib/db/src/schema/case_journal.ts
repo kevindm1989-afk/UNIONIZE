@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
 
 export const caseJournalTable = pgTable("case_journal_entries", {
   id: serial("id").primaryKey(),
@@ -12,6 +12,10 @@ export const caseJournalTable = pgTable("case_journal_entries", {
   isPrivate: boolean("is_private").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  grievanceIdIdx: index("journal_grievance_id_idx").on(table.grievanceId),
+  authorIdIdx: index("journal_author_id_idx").on(table.authorId),
+  createdAtIdx: index("journal_created_at_idx").on(table.createdAt),
+}));
 
 export type CaseJournalEntry = typeof caseJournalTable.$inferSelect;

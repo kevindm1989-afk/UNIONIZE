@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, date, boolean, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, date, boolean, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -28,7 +28,11 @@ export const membersTable = pgTable("members", {
   pushEnabled: boolean("push_enabled").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  employeeIdIdx: index("members_employee_id_idx").on(table.employeeId),
+  departmentIdx: index("members_department_idx").on(table.department),
+  isActiveIdx: index("members_is_active_idx").on(table.isActive),
+}));
 
 export const insertMemberSchema = createInsertSchema(membersTable).omit({
   id: true,

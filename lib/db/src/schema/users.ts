@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, primaryKey, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -40,7 +40,10 @@ export const accessRequestsTable = pgTable("access_requests", {
   status: text("status").notNull().default("pending"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  statusIdx: index("access_requests_status_idx").on(table.status),
+  emailIdx: index("access_requests_email_idx").on(table.email),
+}));
 
 export const rolePermissionsTable = pgTable(
   "role_permissions",
