@@ -4,11 +4,11 @@ import { logger } from "./lib/logger";
 const REQUIRED_ENV_VARS = [
   'DATABASE_URL',
   'SESSION_SECRET',
-  'ANTHROPIC_API_KEY',
   'ADMIN_PASSWORD',
-  'RESEND_API_KEY',
   'PORTAL_URL',
   'EMAIL_FROM',
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);

@@ -9,11 +9,11 @@ primary_region = "ord"
   # Required secrets — set via: fly secrets set KEY=value
   # DATABASE_URL
   # SESSION_SECRET
-  # ANTHROPIC_API_KEY
   # ADMIN_PASSWORD
-  # RESEND_API_KEY
   # PORTAL_URL
   # EMAIL_FROM
+  # VAPID_PUBLIC_KEY
+  # VAPID_PRIVATE_KEY
   # Optional — SMS disabled if missing:
   # TWILIO_ACCOUNT_SID
   # TWILIO_AUTH_TOKEN

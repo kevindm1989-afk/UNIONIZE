@@ -4,11 +4,11 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-const connectionString = process.env.PG_URL || process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || process.env.PG_URL;
 
 if (!connectionString) {
   throw new Error(
-    "PG_URL must be set. Add your external PostgreSQL connection string as a secret.",
+    "DATABASE_URL environment variable must be set.",
   );
 }
 
