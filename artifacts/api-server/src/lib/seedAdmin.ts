@@ -525,12 +525,7 @@ export async function seedAdminUser(): Promise<void> {
       .where(eq(usersTable.username, ADMIN_USERNAME))
       .limit(1);
 
-    // Admin already exists — nothing to seed, no credential check needed.
-    if (existing) return;
-
-    // Refuse to create the admin account with an unknown/default password.
-    // This is a hard stop: set ADMIN_PASSWORD via `fly secrets set` before
-    // the first deploy, or via your local .env file in development.
+    // Refuse to create/update the admin account without a known password.
     if (!process.env.ADMIN_PASSWORD) {
       console.error(
         "FATAL: ADMIN_PASSWORD environment variable is not set. " +
@@ -542,6 +537,17 @@ export async function seedAdminUser(): Promise<void> {
     }
 
     const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+
+    if (existing) {
+      // Admin exists — always sync password and ensure account is active so
+      // that rotating ADMIN_PASSWORD takes effect on next restart.
+      await db
+        .update(usersTable)
+        .set({ passwordHash, isActive: true })
+        .where(eq(usersTable.username, ADMIN_USERNAME));
+      logger.info({ username: ADMIN_USERNAME }, "Admin credentials synced from ADMIN_PASSWORD env var");
+      return;
+    }
 
     await db.insert(usersTable).values({
       username: ADMIN_USERNAME,

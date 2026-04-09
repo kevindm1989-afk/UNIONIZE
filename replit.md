@@ -11,7 +11,8 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: Replit Helium PostgreSQL (internal, via `DATABASE_URL=postgresql://postgres@helium/heliumdb`)
+- **ORM**: Drizzle ORM — **must use `drizzle-orm/neon-serverless`** (not `neon-http`) because the DB is Helium, not Neon cloud; the neon-http driver silently drops UPDATEs against Helium
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Frontend**: React + Vite + shadcn/ui + TanStack Query
@@ -34,6 +35,7 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 - **member_files** — attached documents per member (category: general/discipline/grievance)
 - **audit_logs** — immutable trail of create/update/delete on members & grievances
 - **local_settings** — configurable key-value store (e.g. `grievance_deadline_step_N` days)
+- **access_requests** — member access request system (status: pending/approved/rejected, firstName, lastName, email, employeeId, department, requestedRole, roleJustification, reviewedBy, rejectionReason)
 
 ## API Routes
 

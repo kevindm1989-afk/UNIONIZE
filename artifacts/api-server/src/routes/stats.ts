@@ -54,6 +54,7 @@ router.get("/overview", asyncHandler(async (_req, res) => {
         isNotNull(grievancesTable.resolvedDate),
       )
     )
+    .groupBy(grievancesTable.step)
     .orderBy(grievancesTable.step);
 
   // Q4 — Monthly trend last 12 months (to_char preserves YYYY-MM format)

@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
 import { db, accessRequestsTable, membersTable, usersTable } from "@workspace/db";
-import { eq, and, ilike, desc, sql } from "drizzle-orm";
+import { eq, and, ilike, desc, sql, inArray } from "drizzle-orm";
 import { logAudit } from "../lib/auditLog";
 import {
   sendNewMemberRequestNotification,
@@ -188,7 +188,7 @@ router.get("/", asyncHandler(async (req: Request, res: Response) => {
     const users = await db
       .select({ id: usersTable.id, displayName: usersTable.displayName })
       .from(usersTable)
-      .where(sql`id = ANY(ARRAY[${sql.join(userIds.map(id => sql`${id}`), sql`, `)}])`);
+      .where(inArray(usersTable.id, userIds));
     for (const u of users) userMap[u.id] = u.displayName;
   }
 
