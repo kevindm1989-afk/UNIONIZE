@@ -12,6 +12,7 @@ primary_region = "ord"
   # ADMIN_PASSWORD
   # PORTAL_URL
   # EMAIL_FROM
+  # RESEND_API_KEY — required for email delivery on Fly.io
   # VAPID_PUBLIC_KEY
   # VAPID_PRIVATE_KEY
   # Optional — SMS disabled if missing:

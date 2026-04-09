@@ -17,6 +17,11 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+if (!process.env.REPLIT_CONNECTORS_HOSTNAME && !process.env.RESEND_API_KEY) {
+  console.error('FATAL: Email delivery requires RESEND_API_KEY on Fly.io');
+  process.exit(1);
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
