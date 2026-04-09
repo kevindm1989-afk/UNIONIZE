@@ -156,6 +156,8 @@ export default function MemberDetail() {
   const { toast } = useToast();
   const isAdmin = authUser?.role === "admin" || authUser?.role === "chair";
 
+  const [activeTab, setActiveTab] = useState<"overview" | "files" | "account">("overview");
+
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
@@ -505,8 +507,32 @@ export default function MemberDetail() {
           )}
         </header>
 
+        {/* Tab bar — admins get Overview / Files / Account tabs */}
+        {isAdmin && member && (
+          <div className="flex gap-1 p-1 bg-muted rounded-xl">
+            {([
+              { id: "overview" as const, label: "Overview" },
+              { id: "files" as const, label: "Files" },
+              { id: "account" as const, label: "Account" },
+            ]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-sm font-bold transition-all",
+                  activeTab === id
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Info card */}
-        {isLoading ? (
+        {(!isAdmin || activeTab === "overview") && (isLoading ? (
           <Skeleton className="h-56 w-full rounded-xl" />
         ) : member ? (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -567,10 +593,10 @@ export default function MemberDetail() {
                 format(new Date((member as any).duesLastPaid), "MMM d, yyyy")
               )}
           </div>
-        ) : null}
+        ) : null)}
 
         {/* Notes */}
-        {member?.notes && (
+        {(!isAdmin || activeTab === "overview") && member?.notes && (
           <div className="bg-muted/40 border border-border rounded-xl px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Steward Notes
@@ -580,7 +606,7 @@ export default function MemberDetail() {
         )}
 
         {/* Grievances */}
-        <section className="space-y-2.5">
+        {(!isAdmin || activeTab === "overview") && (<section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Grievance History
@@ -625,10 +651,10 @@ export default function MemberDetail() {
               ))}
             </div>
           )}
-        </section>
+        </section>)}
 
         {/* ─── Member Files ──────────────────────────────────────────── */}
-        <section className="space-y-2.5">
+        {(!isAdmin || activeTab === "files") && (<section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Files
@@ -755,10 +781,10 @@ export default function MemberDetail() {
               ))}
             </div>
           )}
-        </section>
+        </section>)}
 
         {/* ─── Discipline History ──────────────────────────────────────── */}
-        <section className="space-y-2.5">
+        {(!isAdmin || activeTab === "overview") && (<section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <AlertOctagon className="w-4 h-4 text-muted-foreground" />
@@ -814,10 +840,10 @@ export default function MemberDetail() {
               ))}
             </div>
           )}
-        </section>
+        </section>)}
 
         {/* ─── Onboarding Checklist ────────────────────────────────────── */}
-        <section className="space-y-2.5">
+        {(!isAdmin || activeTab === "overview") && (<section className="space-y-2.5">
           <div className="flex items-center gap-1.5">
             <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -859,10 +885,10 @@ export default function MemberDetail() {
               );
             })}
           </div>
-        </section>
+        </section>)}
 
         {/* Account Management */}
-        {member && can("members.edit") && (
+        {(!isAdmin || activeTab === "account") && member && can("members.edit") && (
           <div className="pt-2 space-y-2">
             <div className="flex items-center gap-1.5 mb-3">
               <ShieldAlert className="w-4 h-4 text-muted-foreground" />

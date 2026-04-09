@@ -51,6 +51,9 @@ export default function Members() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useLocalDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [duesFilter, setDuesFilter] = useState<string>("all");
+  const [deptFilter, setDeptFilter] = useState<string>("");
+  const [shiftFilter, setShiftFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
@@ -62,11 +65,18 @@ export default function Members() {
       fetchJson(`/api/members${debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""}`),
   });
 
+  const departments = [...new Set(allMembers.map((m) => m.department).filter(Boolean) as string[])].sort();
+
   const members = allMembers.filter((m) => {
-    if (statusFilter === "active") return m.isActive;
-    if (statusFilter === "inactive") return !m.isActive;
+    if (statusFilter === "active" && !m.isActive) return false;
+    if (statusFilter === "inactive" && m.isActive) return false;
+    if (duesFilter !== "all" && (m.duesStatus ?? "current") !== duesFilter) return false;
+    if (shiftFilter !== "all" && (m.shift ?? "") !== shiftFilter) return false;
+    if (deptFilter && !(m.department ?? "").toLowerCase().includes(deptFilter.toLowerCase())) return false;
     return true;
   });
+
+  const hasFilters = statusFilter !== "active" || duesFilter !== "all" || shiftFilter !== "all" || deptFilter !== "";
 
   const toggleSelect = (id: number) => {
     setSelected((prev) => {
@@ -146,11 +156,14 @@ export default function Members() {
             <Button
               size="sm"
               variant="outline"
-              className="h-9 rounded-xl gap-1.5"
+              className={cn("h-9 rounded-xl gap-1.5 relative", hasFilters && "border-primary text-primary")}
               onClick={() => setShowFilters((v) => !v)}
             >
               <Filter className="w-4 h-4" />
               Filter
+              {hasFilters && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" />
+              )}
             </Button>
           </div>
         </header>
@@ -168,32 +181,132 @@ export default function Members() {
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</p>
-            <div className="flex gap-2">
-              {([
-                { value: "active" as StatusFilter, label: "Active", count: activeCount, icon: Users },
-                { value: "inactive" as StatusFilter, label: "Inactive", count: pendingCount, icon: UserX },
-                { value: "all" as StatusFilter, label: "All", count: allMembers.length, icon: null },
-              ]).map(({ value, label, count, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setStatusFilter(value)}
-                  className={cn(
-                    "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl border text-sm font-bold transition-all",
-                    statusFilter === value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border text-muted-foreground"
-                  )}
-                >
-                  {Icon && <Icon className="w-4 h-4" />}
-                  {label}
-                  <span className={cn("text-[10px] font-semibold", statusFilter === value ? "opacity-80" : "opacity-60")}>
-                    {count}
-                  </span>
-                </button>
-              ))}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+            {/* Status */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</p>
+              <div className="flex gap-2">
+                {([
+                  { value: "active" as StatusFilter, label: "Active", count: activeCount, icon: Users },
+                  { value: "inactive" as StatusFilter, label: "Inactive", count: pendingCount, icon: UserX },
+                  { value: "all" as StatusFilter, label: "All", count: allMembers.length, icon: null },
+                ]).map(({ value, label, count, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setStatusFilter(value)}
+                    className={cn(
+                      "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl border text-sm font-bold transition-all",
+                      statusFilter === value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border text-muted-foreground"
+                    )}
+                  >
+                    {Icon && <Icon className="w-4 h-4" />}
+                    {label}
+                    <span className={cn("text-[10px] font-semibold", statusFilter === value ? "opacity-80" : "opacity-60")}>
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Dues Status */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dues Status</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { value: "all", label: "All" },
+                  { value: "current", label: "Current" },
+                  { value: "arrears", label: "Arrears" },
+                  { value: "exempt", label: "Exempt" },
+                ]).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setDuesFilter(value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      duesFilter === value
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Shift */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Shift</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { value: "all", label: "All" },
+                  { value: "days", label: "Days" },
+                  { value: "afternoons", label: "Afternoons" },
+                  { value: "nights", label: "Nights" },
+                  { value: "rotating", label: "Rotating" },
+                ]).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setShiftFilter(value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      shiftFilter === value
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Department */}
+            {departments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Department</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setDeptFilter("")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      deptFilter === ""
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All
+                  </button>
+                  {departments.map((dept) => (
+                    <button
+                      key={dept}
+                      onClick={() => setDeptFilter(deptFilter === dept ? "" : dept)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                        deptFilter === dept
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-background border-border text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {dept}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Clear all */}
+            {hasFilters && (
+              <button
+                onClick={() => { setStatusFilter("active"); setDuesFilter("all"); setShiftFilter("all"); setDeptFilter(""); }}
+                className="text-xs font-bold text-primary underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
 
