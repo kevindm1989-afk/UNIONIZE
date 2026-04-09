@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from "express";
-import { rateLimit } from "express-rate-limit";
 import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
 import { db, accessRequestsTable, membersTable, usersTable } from "@workspace/db";
@@ -11,6 +10,7 @@ import {
   sendAccessRequestRejectedEmail,
 } from "../lib/email";
 import { asyncHandler } from "../lib/asyncHandler";
+import { accessRequestLimiter as accessRequestRateLimit } from "../lib/rateLimiters";
 
 const router = Router();
 
@@ -25,15 +25,6 @@ function requireAdmin(req: Request, res: Response): boolean {
   }
   return true;
 }
-
-// ─── Rate limiter for public POST ─────────────────────────────────────────────
-export const accessRequestRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Too many requests. Please try again in an hour.", code: "RATE_LIMITED" },
-});
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const ROLE_ENUM = ["member", "steward", "co_chair"] as const;

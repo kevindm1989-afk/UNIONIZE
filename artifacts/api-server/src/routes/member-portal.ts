@@ -5,6 +5,7 @@ import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { ANTHROPIC_MODEL } from "../lib/anthropic/constants";
 import { z } from "zod/v4";
 import { asyncHandler } from "../lib/asyncHandler";
+import { aiChatLimiter, grievanceCreateLimiter } from "../lib/rateLimiters";
 // @ts-ignore — .txt imported via esbuild text loader
 import cbaText from "../data/cba.txt";
 
@@ -135,7 +136,7 @@ router.get("/grievances", requireMemberRole, asyncHandler(async (req: Request, r
 /**
  * POST /member-portal/grievances — submit a new grievance (simplified form)
  */
-router.post("/grievances", requireMemberRole, asyncHandler(async (req: Request, res: Response) => {
+router.post("/grievances", requireMemberRole, grievanceCreateLimiter, asyncHandler(async (req: Request, res: Response) => {
   const memberId = req.session.linkedMemberId!;
   const { description, dateOfIncident, accommodationRequest } = req.body ?? {};
 
@@ -255,7 +256,7 @@ router.post("/sign-card", requireMemberRole, asyncHandler(async (req: Request, r
  * History is passed in-request and not persisted to the database.
  * Has its own try/catch for streaming error handling.
  */
-router.post("/ai/chat", requireMemberRole, async (req: Request, res: Response) => {
+router.post("/ai/chat", requireMemberRole, aiChatLimiter, async (req: Request, res: Response) => {
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ error: "Invalid request body", code: "VALIDATION_ERROR" });

@@ -4,6 +4,7 @@ import { eq, asc } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { ANTHROPIC_MODEL } from "../../lib/anthropic/constants";
 import { SendAnthropicMessageBody } from "@workspace/api-zod";
+import { aiChatLimiter } from "../../lib/rateLimiters";
 // @ts-ignore — .txt imported via esbuild text loader
 import cbaText from "../../data/cba.txt";
 
@@ -126,7 +127,7 @@ router.get("/conversations/:id/messages", async (req: Request, res: Response) =>
   }
 });
 
-router.post("/conversations/:id/messages", async (req: Request, res: Response) => {
+router.post("/conversations/:id/messages", aiChatLimiter, async (req: Request, res: Response) => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
