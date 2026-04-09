@@ -620,9 +620,6 @@ importers:
       drizzle-zod:
         specifier: ^0.8.3
         version: 0.8.3(drizzle-orm@0.45.2(@neondatabase/serverless@1.0.2)(@types/pg@8.18.0)(pg@8.20.0))(zod@3.25.76)
-      pg:
-        specifier: ^8.20.0
-        version: 8.20.0
       ws:
         specifier: ^8.20.0
         version: 8.20.0
@@ -633,9 +630,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
-      '@types/pg':
-        specifier: ^8.18.0
-        version: 8.18.0
+      '@types/ws':
+        specifier: ^8.5.14
+        version: 8.18.1
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
@@ -3468,6 +3465,9 @@ packages:
 
   '@types/web-push@3.6.4':
     resolution: {integrity: sha512-GnJmSr40H3RAnj0s34FNTcJi1hmWFV5KXugE0mYWnYhgTAHLJ/dJKAwDmvPJYMke0RplY2XE9LnM4hqSqKIjhQ==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@uppy/aws-s3@5.1.0':
     resolution: {integrity: sha512-UBz+shrtDbnOf11AboDrkc9Fq2Cdf8HbFftE+gqfxig6fkv5rHpHhBCLkl8wCGAq+X/CxdqvvNhm/OM23Uzw2w==}
@@ -9589,6 +9589,10 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/web-push@3.6.4':
+    dependencies:
+      '@types/node': 25.3.5
+
+  '@types/ws@8.18.1':
     dependencies:
       '@types/node': 25.3.5
 

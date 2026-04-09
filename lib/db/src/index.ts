@@ -1,25 +1,20 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon, neonConfig, Pool } from "@neondatabase/serverless";
+import ws from "ws";
 import * as schema from "./schema";
 
-const { Pool } = pg;
+neonConfig.webSocketConstructor = ws;
 
 const connectionString = process.env.DATABASE_URL || process.env.PG_URL;
 
 if (!connectionString) {
-  throw new Error(
-    "DATABASE_URL environment variable must be set.",
-  );
+  throw new Error("DATABASE_URL environment variable must be set.");
 }
 
-const isNeon = connectionString.includes("neon.tech");
-const isSupabase = connectionString.includes("supabase.com");
+const neonSql = neon(connectionString);
 
-export const pool = new Pool({
-  connectionString,
-  ssl: (isNeon || isSupabase) ? { rejectUnauthorized: false } : undefined,
-});
+export const db = drizzle(neonSql, { schema });
 
-export const db = drizzle(pool, { schema });
+export const pool = new Pool({ connectionString });
 
 export * from "./schema";
