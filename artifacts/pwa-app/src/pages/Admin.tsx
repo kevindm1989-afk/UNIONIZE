@@ -143,6 +143,16 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const dismissMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetchJson(`/api/access-requests/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/access-requests"] });
+      toast({ title: "Request dismissed", description: "The request has been removed." });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   // ── Users ────────────────────────────────────────────────────────────────────
   const { data: users = [], isLoading: loadingUsers } = useQuery<AppUser[]>({
     queryKey: ["/auth/users"],
@@ -602,6 +612,16 @@ export default function Admin() {
                         >
                           <XCircle className="w-3.5 h-3.5" />
                           Reject
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          title="Dismiss (delete without notification)"
+                          onClick={() => dismissMutation.mutate(r.id)}
+                          disabled={dismissMutation.isPending}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     )}

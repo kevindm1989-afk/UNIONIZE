@@ -34,11 +34,6 @@ export const ListMembersResponseItem = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
-  seniorityDate: zod.coerce.date().nullish(),
-  duesStatus: zod.string().nullish(),
-  duesLastPaid: zod.coerce.date().nullish(),
-  shift: zod.string().nullish(),
-  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -56,14 +51,9 @@ export const CreateMemberBody = zod.object({
   classification: zod.string().nullish(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  joinDate: zod.preprocess(v => (v === "" ? undefined : v), zod.coerce.date().nullish()),
+  joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean().default(createMemberBodyIsActiveDefault),
   notes: zod.string().nullish(),
-  seniorityDate: zod.string().nullish(),
-  duesStatus: zod.string().nullish(),
-  duesLastPaid: zod.string().nullish(),
-  shift: zod.string().nullish(),
-  classificationDate: zod.string().nullish(),
 });
 
 /**
@@ -84,11 +74,6 @@ export const GetMemberResponse = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
-  seniorityDate: zod.coerce.date().nullish(),
-  duesStatus: zod.string().nullish(),
-  duesLastPaid: zod.coerce.date().nullish(),
-  shift: zod.string().nullish(),
-  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -107,14 +92,9 @@ export const UpdateMemberBody = zod.object({
   classification: zod.string().nullish(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  joinDate: zod.preprocess(v => (v === "" ? undefined : v), zod.coerce.date().nullish()),
+  joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean().optional(),
   notes: zod.string().nullish(),
-  seniorityDate: zod.string().nullish(),
-  duesStatus: zod.string().nullish(),
-  duesLastPaid: zod.string().nullish(),
-  shift: zod.string().nullish(),
-  classificationDate: zod.string().nullish(),
 });
 
 export const UpdateMemberResponse = zod.object({
@@ -128,11 +108,6 @@ export const UpdateMemberResponse = zod.object({
   joinDate: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
   notes: zod.string().nullish(),
-  seniorityDate: zod.coerce.date().nullish(),
-  duesStatus: zod.string().nullish(),
-  duesLastPaid: zod.coerce.date().nullish(),
-  shift: zod.string().nullish(),
-  classificationDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -167,13 +142,11 @@ export const GetMemberGrievancesResponseItem = zod.object({
     "resolved",
     "withdrawn",
   ]),
-  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
-  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -214,13 +187,11 @@ export const ListGrievancesResponseItem = zod.object({
     "resolved",
     "withdrawn",
   ]),
-  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
-  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -250,7 +221,6 @@ export const CreateGrievanceBody = zod.object({
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
-  accommodationRequest: zod.boolean().optional(),
 });
 
 /**
@@ -276,13 +246,11 @@ export const GetGrievanceResponse = zod.object({
     "resolved",
     "withdrawn",
   ]),
-  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
-  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -314,7 +282,6 @@ export const UpdateGrievanceBody = zod.object({
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
-  accommodationRequest: zod.boolean().optional(),
 });
 
 export const UpdateGrievanceResponse = zod.object({
@@ -333,13 +300,11 @@ export const UpdateGrievanceResponse = zod.object({
     "resolved",
     "withdrawn",
   ]),
-  accommodationRequest: zod.boolean().default(false),
   filedDate: zod.coerce.date(),
   dueDate: zod.coerce.date().nullish(),
   resolvedDate: zod.coerce.date().nullish(),
   resolution: zod.string().nullish(),
   notes: zod.string().nullish(),
-  isOverdue: zod.boolean().default(false),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -366,8 +331,6 @@ export const GetGrievancesSummaryResponse = zod.object({
   step2: zod.number(),
   step3: zod.number(),
   step4: zod.number(),
-  step5: zod.number().optional(),
-  accommodation: zod.number().optional(),
 });
 
 /**
@@ -713,3 +676,1289 @@ export const SendAnthropicMessageParams = zod.object({
 export const SendAnthropicMessageBody = zod.object({
   content: zod.string(),
 });
+
+/**
+ * @summary Submit a new portal access request (public)
+ */
+export const postApiAuthRequestAccessBodyFirstNameMax = 100;
+
+export const postApiAuthRequestAccessBodyLastNameMax = 100;
+
+export const postApiAuthRequestAccessBodyEmailMax = 255;
+
+export const postApiAuthRequestAccessBodyPhoneMax = 30;
+
+export const postApiAuthRequestAccessBodyEmployeeIdMax = 50;
+
+export const postApiAuthRequestAccessBodyDepartmentMax = 100;
+
+export const postApiAuthRequestAccessBodyRequestedRoleDefault = `member`;
+export const postApiAuthRequestAccessBodyRoleJustificationMax = 2000;
+
+export const postApiAuthRequestAccessBodyMessageMax = 1000;
+
+export const PostApiAuthRequestAccessBody = zod.object({
+  firstName: zod.string().min(1).max(postApiAuthRequestAccessBodyFirstNameMax),
+  lastName: zod.string().min(1).max(postApiAuthRequestAccessBodyLastNameMax),
+  email: zod.string().email().max(postApiAuthRequestAccessBodyEmailMax),
+  phone: zod.string().max(postApiAuthRequestAccessBodyPhoneMax).nullish(),
+  employeeId: zod
+    .string()
+    .max(postApiAuthRequestAccessBodyEmployeeIdMax)
+    .nullish(),
+  department: zod
+    .string()
+    .max(postApiAuthRequestAccessBodyDepartmentMax)
+    .nullish(),
+  shift: zod.enum(["days", "afternoons", "nights", "rotating"]).nullish(),
+  requestedRole: zod
+    .enum(["member", "steward", "co_chair"])
+    .default(postApiAuthRequestAccessBodyRequestedRoleDefault),
+  roleJustification: zod
+    .string()
+    .max(postApiAuthRequestAccessBodyRoleJustificationMax)
+    .nullish(),
+  message: zod.string().max(postApiAuthRequestAccessBodyMessageMax).nullish(),
+});
+
+/**
+ * @summary List access requests (admin)
+ */
+export const GetApiAccessRequestsQueryParams = zod.object({
+  status: zod.enum(["pending", "approved", "rejected"]).optional(),
+});
+
+export const GetApiAccessRequestsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  username: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  employeeId: zod.string().nullish(),
+  department: zod.string().nullish(),
+  shift: zod.string().nullish(),
+  message: zod.string().nullish(),
+  requestedRole: zod.string().nullish(),
+  roleJustification: zod.string().nullish(),
+  approvedRole: zod.string().nullish(),
+  rejectionReason: zod.string().nullish(),
+  reviewedBy: zod.number().nullish(),
+  status: zod.enum(["pending", "approved", "rejected"]),
+  reviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiAccessRequestsResponse = zod.array(
+  GetApiAccessRequestsResponseItem,
+);
+
+/**
+ * @summary Get a single access request
+ */
+export const GetApiAccessRequestsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiAccessRequestsIdResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  username: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  employeeId: zod.string().nullish(),
+  department: zod.string().nullish(),
+  shift: zod.string().nullish(),
+  message: zod.string().nullish(),
+  requestedRole: zod.string().nullish(),
+  roleJustification: zod.string().nullish(),
+  approvedRole: zod.string().nullish(),
+  rejectionReason: zod.string().nullish(),
+  reviewedBy: zod.number().nullish(),
+  status: zod.enum(["pending", "approved", "rejected"]),
+  reviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Reject and delete an access request (admin)
+ */
+export const DeleteApiAccessRequestsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApiAccessRequestsIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Approve an access request and create user account (admin)
+ */
+export const PatchApiAccessRequestsIdApproveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiAccessRequestsIdApproveBody = zod.object({
+  approvedRole: zod.enum(["member", "steward", "co_chair", "admin"]),
+});
+
+export const PatchApiAccessRequestsIdApproveResponse = zod.object({
+  user: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    role: zod.enum(["admin", "chair", "steward", "co_chair", "member"]),
+    isActive: zod.boolean(),
+    linkedMemberId: zod.number().nullish(),
+    lastLoginAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+  tempPassword: zod.string(),
+});
+
+/**
+ * @summary Reject an access request (admin)
+ */
+export const PatchApiAccessRequestsIdRejectParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiAccessRequestsIdRejectBody = zod.object({
+  rejectionReason: zod.string().min(1),
+});
+
+export const PatchApiAccessRequestsIdRejectResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  username: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  employeeId: zod.string().nullish(),
+  department: zod.string().nullish(),
+  shift: zod.string().nullish(),
+  message: zod.string().nullish(),
+  requestedRole: zod.string().nullish(),
+  roleJustification: zod.string().nullish(),
+  approvedRole: zod.string().nullish(),
+  rejectionReason: zod.string().nullish(),
+  reviewedBy: zod.number().nullish(),
+  status: zod.enum(["pending", "approved", "rejected"]),
+  reviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all portal users (admin)
+ */
+export const GetApiAuthUsersQueryParams = zod.object({
+  memberId: zod.coerce.number().optional(),
+});
+
+export const GetApiAuthUsersResponseItem = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "chair", "steward", "co_chair", "member"]),
+  isActive: zod.boolean(),
+  linkedMemberId: zod.number().nullish(),
+  lastLoginAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiAuthUsersResponse = zod.array(GetApiAuthUsersResponseItem);
+
+/**
+ * @summary Create a portal user manually (admin)
+ */
+export const postApiAuthUsersBodyPasswordMin = 8;
+
+export const PostApiAuthUsersBody = zod.object({
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod
+    .enum(["admin", "chair", "steward", "co_chair", "member"])
+    .optional(),
+  password: zod.string().min(postApiAuthUsersBodyPasswordMin),
+});
+
+/**
+ * @summary Update a user (toggle active, change role, reset password) (admin)
+ */
+export const PatchApiAuthUsersIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const patchApiAuthUsersIdBodyPasswordMin = 8;
+
+export const PatchApiAuthUsersIdBody = zod.object({
+  isActive: zod.boolean().optional(),
+  role: zod
+    .enum(["admin", "chair", "steward", "co_chair", "member"])
+    .optional(),
+  password: zod.string().min(patchApiAuthUsersIdBodyPasswordMin).nullish(),
+  displayName: zod.string().optional(),
+  linkedMemberId: zod.number().nullish(),
+});
+
+export const PatchApiAuthUsersIdResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "chair", "steward", "co_chair", "member"]),
+  isActive: zod.boolean(),
+  linkedMemberId: zod.number().nullish(),
+  lastLoginAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all roles and their permissions
+ */
+export const GetApiAuthRolesResponseItem = zod.object({
+  role: zod.string(),
+  permissions: zod.array(zod.string()),
+});
+export const GetApiAuthRolesResponse = zod.array(GetApiAuthRolesResponseItem);
+
+/**
+ * @summary Get current user permissions
+ */
+export const GetApiAuthPermissionsResponse = zod.object({
+  role: zod.string(),
+  permissions: zod.array(zod.string()),
+});
+
+/**
+ * @summary List meetings
+ */
+export const GetApiMeetingsQueryParams = zod.object({
+  type: zod.enum(["executive", "general", "stewards"]).optional(),
+  upcoming: zod.coerce.boolean().optional(),
+});
+
+export const GetApiMeetingsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  type: zod.enum(["executive", "general", "stewards"]),
+  date: zod.coerce.date(),
+  location: zod.string().nullish(),
+  agenda: zod.string().nullish(),
+  minutes: zod.string().nullish(),
+  attendees: zod.array(zod.number()).nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiMeetingsResponse = zod.array(GetApiMeetingsResponseItem);
+
+/**
+ * @summary Create a meeting
+ */
+export const PostApiMeetingsBody = zod.object({
+  title: zod.string(),
+  type: zod.enum(["executive", "general", "stewards"]),
+  date: zod.coerce.date(),
+  location: zod.string().nullish(),
+  agenda: zod.string().nullish(),
+  minutes: zod.string().nullish(),
+  attendees: zod.array(zod.number()).nullish(),
+});
+
+/**
+ * @summary Get a meeting by ID
+ */
+export const GetApiMeetingsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiMeetingsIdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  type: zod.enum(["executive", "general", "stewards"]),
+  date: zod.coerce.date(),
+  location: zod.string().nullish(),
+  agenda: zod.string().nullish(),
+  minutes: zod.string().nullish(),
+  attendees: zod.array(zod.number()).nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a meeting
+ */
+export const PatchApiMeetingsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiMeetingsIdBody = zod.object({
+  title: zod.string().optional(),
+  type: zod.enum(["executive", "general", "stewards"]).optional(),
+  date: zod.coerce.date().optional(),
+  location: zod.string().nullish(),
+  agenda: zod.string().nullish(),
+  minutes: zod.string().nullish(),
+  attendees: zod.array(zod.number()).nullish(),
+});
+
+export const PatchApiMeetingsIdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  type: zod.enum(["executive", "general", "stewards"]),
+  date: zod.coerce.date(),
+  location: zod.string().nullish(),
+  agenda: zod.string().nullish(),
+  minutes: zod.string().nullish(),
+  attendees: zod.array(zod.number()).nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a meeting
+ */
+export const DeleteApiMeetingsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApiMeetingsIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List active polls
+ */
+export const GetApiPollsResponseItem = zod
+  .object({
+    id: zod.number(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    pollType: zod.enum(["yes_no", "multiple_choice"]),
+    options: zod.array(zod.string()).nullish(),
+    startsAt: zod.coerce.date(),
+    endsAt: zod.coerce.date(),
+    createdBy: zod.number().nullish(),
+    isActive: zod.boolean(),
+    targetRole: zod.enum(["all", "member", "steward"]),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      userResponse: zod.string().nullish(),
+      isExpired: zod.boolean(),
+    }),
+  );
+export const GetApiPollsResponse = zod.array(GetApiPollsResponseItem);
+
+/**
+ * @summary Create a poll (admin/chair only)
+ */
+export const postApiPollsBodyPollTypeDefault = `yes_no`;
+export const postApiPollsBodyTargetRoleDefault = `all`;
+
+export const PostApiPollsBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  pollType: zod
+    .enum(["yes_no", "multiple_choice"])
+    .default(postApiPollsBodyPollTypeDefault),
+  options: zod.array(zod.string()).nullish(),
+  startsAt: zod.coerce.date().nullish(),
+  endsAt: zod.coerce.date(),
+  targetRole: zod
+    .enum(["all", "member", "steward"])
+    .default(postApiPollsBodyTargetRoleDefault),
+});
+
+/**
+ * @summary Get a poll by ID
+ */
+export const GetApiPollsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiPollsIdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  pollType: zod.enum(["yes_no", "multiple_choice"]),
+  options: zod.array(zod.string()).nullish(),
+  startsAt: zod.coerce.date(),
+  endsAt: zod.coerce.date(),
+  createdBy: zod.number().nullish(),
+  isActive: zod.boolean(),
+  targetRole: zod.enum(["all", "member", "steward"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a poll (admin/chair only)
+ */
+export const PatchApiPollsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiPollsIdBody = zod.object({
+  isActive: zod.boolean().optional(),
+  endsAt: zod.coerce.date().optional(),
+});
+
+export const PatchApiPollsIdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  pollType: zod.enum(["yes_no", "multiple_choice"]),
+  options: zod.array(zod.string()).nullish(),
+  startsAt: zod.coerce.date(),
+  endsAt: zod.coerce.date(),
+  createdBy: zod.number().nullish(),
+  isActive: zod.boolean(),
+  targetRole: zod.enum(["all", "member", "steward"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a poll (admin/chair only)
+ */
+export const DeleteApiPollsIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApiPollsIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Submit a vote on a poll
+ */
+export const PostApiPollsIdRespondParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostApiPollsIdRespondBody = zod.object({
+  response: zod.string(),
+});
+
+/**
+ * @summary Get poll results (members see results after poll closes)
+ */
+export const GetApiPollsIdResultsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiPollsIdResultsResponse = zod.object({
+  poll: zod.object({
+    id: zod.number(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    pollType: zod.enum(["yes_no", "multiple_choice"]),
+    options: zod.array(zod.string()).nullish(),
+    startsAt: zod.coerce.date(),
+    endsAt: zod.coerce.date(),
+    createdBy: zod.number().nullish(),
+    isActive: zod.boolean(),
+    targetRole: zod.enum(["all", "member", "steward"]),
+    createdAt: zod.coerce.date(),
+  }),
+  total: zod.number(),
+  results: zod.array(
+    zod.object({
+      response: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary List steward coverage assignments
+ */
+export const GetApiCoverageResponseItem = zod.object({
+  id: zod.number(),
+  stewardId: zod.number().nullish(),
+  department: zod.string().nullish(),
+  shift: zod.enum(["days", "afternoons", "nights", "rotating"]).nullish(),
+  areaNotes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiCoverageResponse = zod.array(GetApiCoverageResponseItem);
+
+/**
+ * @summary Create a coverage assignment
+ */
+export const PostApiCoverageBody = zod.object({
+  stewardId: zod.number().optional(),
+  department: zod.string().optional(),
+  shift: zod.enum(["days", "afternoons", "nights", "rotating"]).optional(),
+  areaNotes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a coverage assignment
+ */
+export const PatchApiCoverageIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiCoverageIdBody = zod.object({
+  stewardId: zod.number().optional(),
+  department: zod.string().optional(),
+  shift: zod.enum(["days", "afternoons", "nights", "rotating"]).optional(),
+  areaNotes: zod.string().nullish(),
+});
+
+export const PatchApiCoverageIdResponse = zod.object({
+  id: zod.number(),
+  stewardId: zod.number().nullish(),
+  department: zod.string().nullish(),
+  shift: zod.enum(["days", "afternoons", "nights", "rotating"]).nullish(),
+  areaNotes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a coverage assignment
+ */
+export const DeleteApiCoverageIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApiCoverageIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get combined statistics overview (steward only)
+ */
+export const GetApiStatsResponse = zod.object({
+  grievances: zod.object({}).passthrough().nullish(),
+  members: zod.object({}).passthrough().nullish(),
+  disciplines: zod.object({}).passthrough().nullish(),
+});
+
+/**
+ * @summary Get the current member's own profile
+ */
+export const GetApiMemberPortalProfileResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  employeeId: zod.string().nullish(),
+  department: zod.string().nullish(),
+  classification: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  smsEnabled: zod.boolean(),
+  emailEnabled: zod.boolean(),
+  pushEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Update own notification preferences
+ */
+export const PatchApiMemberPortalProfileBody = zod.object({
+  smsEnabled: zod.boolean().optional(),
+  emailEnabled: zod.boolean().optional(),
+  pushEnabled: zod.boolean().optional(),
+});
+
+export const PatchApiMemberPortalProfileResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  employeeId: zod.string().nullish(),
+  department: zod.string().nullish(),
+  classification: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  smsEnabled: zod.boolean(),
+  emailEnabled: zod.boolean(),
+  pushEnabled: zod.boolean(),
+});
+
+/**
+ * @summary List the current member's own grievances
+ */
+export const GetApiMemberPortalGrievancesResponseItem = zod.object({
+  id: zod.number(),
+  grievanceNumber: zod.string(),
+  title: zod.string(),
+  status: zod.enum([
+    "open",
+    "pending_response",
+    "pending_hearing",
+    "resolved",
+    "withdrawn",
+  ]),
+  step: zod.number(),
+  filedDate: zod.coerce.date(),
+  dueDate: zod.coerce.date().nullish(),
+  resolvedDate: zod.coerce.date().nullish(),
+  resolution: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiMemberPortalGrievancesResponse = zod.array(
+  GetApiMemberPortalGrievancesResponseItem,
+);
+
+/**
+ * @summary File a grievance as a member
+ */
+export const PostApiMemberPortalGrievancesBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  contractArticle: zod.string().nullish(),
+  filedDate: zod.coerce.date(),
+});
+
+/**
+ * @summary Get details of one of the current member's grievances
+ */
+export const GetApiMemberPortalGrievancesIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiMemberPortalGrievancesIdResponse = zod.object({
+  id: zod.number(),
+  grievanceNumber: zod.string(),
+  title: zod.string(),
+  status: zod.enum([
+    "open",
+    "pending_response",
+    "pending_hearing",
+    "resolved",
+    "withdrawn",
+  ]),
+  step: zod.number(),
+  filedDate: zod.coerce.date(),
+  dueDate: zod.coerce.date().nullish(),
+  resolvedDate: zod.coerce.date().nullish(),
+  resolution: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Send messages to the CBA AI assistant (member role, SSE stream)
+ */
+export const postApiMemberPortalAiChatBodyMessagesItemContentMax = 10000;
+
+export const postApiMemberPortalAiChatBodyMessagesMax = 50;
+
+export const PostApiMemberPortalAiChatBody = zod.object({
+  messages: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod
+          .string()
+          .min(1)
+          .max(postApiMemberPortalAiChatBodyMessagesItemContentMax),
+      }),
+    )
+    .min(1)
+    .max(postApiMemberPortalAiChatBodyMessagesMax),
+});
+
+/**
+ * @summary Get VAPID public key for push subscription
+ */
+export const GetApiPushVapidPublicKeyResponse = zod.object({
+  publicKey: zod.string(),
+});
+
+/**
+ * @summary Subscribe device to push notifications
+ */
+export const PostApiPushSubscribeBody = zod.object({
+  endpoint: zod.string(),
+  p256dh: zod.string(),
+  auth: zod.string(),
+});
+
+/**
+ * @summary Unsubscribe device from push notifications
+ */
+export const DeleteApiPushSubscribeBody = zod.object({
+  endpoint: zod.string(),
+});
+
+export const DeleteApiPushSubscribeResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Send a push notification (admin only)
+ */
+export const PostApiPushSendBody = zod.object({
+  title: zod.string(),
+  body: zod.string(),
+  targetRole: zod.enum(["all", "member", "steward", "admin"]).nullish(),
+  targetDepartment: zod.string().nullish(),
+});
+
+export const PostApiPushSendResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List journal entries for a grievance (steward only)
+ */
+export const GetApiGrievancesIdJournalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiGrievancesIdJournalResponseItem = zod.object({
+  id: zod.number(),
+  grievanceId: zod.number(),
+  authorId: zod.number().nullish(),
+  entryType: zod.enum([
+    "note",
+    "call",
+    "meeting",
+    "email",
+    "management_contact",
+  ]),
+  content: zod.string(),
+  isPrivate: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetApiGrievancesIdJournalResponse = zod.array(
+  GetApiGrievancesIdJournalResponseItem,
+);
+
+/**
+ * @summary Add a journal entry (steward only)
+ */
+export const PostApiGrievancesIdJournalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postApiGrievancesIdJournalBodyIsPrivateDefault = true;
+
+export const PostApiGrievancesIdJournalBody = zod.object({
+  entryType: zod.enum([
+    "note",
+    "call",
+    "meeting",
+    "email",
+    "management_contact",
+  ]),
+  content: zod.string(),
+  isPrivate: zod
+    .boolean()
+    .default(postApiGrievancesIdJournalBodyIsPrivateDefault),
+});
+
+/**
+ * @summary Update a journal entry (steward only)
+ */
+export const PatchApiGrievancesIdJournalEntryIdParams = zod.object({
+  id: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const PatchApiGrievancesIdJournalEntryIdBody = zod.object({
+  entryType: zod
+    .enum(["note", "call", "meeting", "email", "management_contact"])
+    .optional(),
+  content: zod.string().optional(),
+  isPrivate: zod.boolean().optional(),
+});
+
+export const PatchApiGrievancesIdJournalEntryIdResponse = zod.object({
+  id: zod.number(),
+  grievanceId: zod.number(),
+  authorId: zod.number().nullish(),
+  entryType: zod.enum([
+    "note",
+    "call",
+    "meeting",
+    "email",
+    "management_contact",
+  ]),
+  content: zod.string(),
+  isPrivate: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a journal entry (steward only)
+ */
+export const DeleteApiGrievancesIdJournalEntryIdParams = zod.object({
+  id: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const DeleteApiGrievancesIdJournalEntryIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get just cause assessment for a grievance (steward only)
+ */
+export const GetApiGrievancesIdJustCauseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiGrievancesIdJustCauseResponse = zod.object({
+  id: zod.number(),
+  grievanceId: zod.number(),
+  adequateNotice: zod.boolean(),
+  reasonableRule: zod.boolean(),
+  investigationConducted: zod.boolean(),
+  investigationFair: zod.boolean(),
+  proofSufficient: zod.boolean(),
+  penaltyConsistent: zod.boolean(),
+  penaltyProgressive: zod.boolean(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Create or update just cause assessment (steward only)
+ */
+export const PostApiGrievancesIdJustCauseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostApiGrievancesIdJustCauseBody = zod.object({
+  adequateNotice: zod.boolean(),
+  reasonableRule: zod.boolean(),
+  investigationConducted: zod.boolean(),
+  investigationFair: zod.boolean(),
+  proofSufficient: zod.boolean(),
+  penaltyConsistent: zod.boolean(),
+  penaltyProgressive: zod.boolean(),
+  notes: zod.string().nullish(),
+});
+
+export const PostApiGrievancesIdJustCauseResponse = zod.object({
+  id: zod.number(),
+  grievanceId: zod.number(),
+  adequateNotice: zod.boolean(),
+  reasonableRule: zod.boolean(),
+  investigationConducted: zod.boolean(),
+  investigationFair: zod.boolean(),
+  proofSufficient: zod.boolean(),
+  penaltyConsistent: zod.boolean(),
+  penaltyProgressive: zod.boolean(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List communication log for a grievance (steward only)
+ */
+export const GetApiGrievancesIdCommunicationsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiGrievancesIdCommunicationsResponseItem = zod.object({
+  id: zod.number(),
+  grievanceId: zod.number().nullish(),
+  memberId: zod.number().nullish(),
+  contactMethod: zod.enum([
+    "in_person",
+    "phone",
+    "text",
+    "email",
+    "voicemail",
+    "no_answer",
+  ]),
+  summary: zod.string(),
+  contactDate: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiGrievancesIdCommunicationsResponse = zod.array(
+  GetApiGrievancesIdCommunicationsResponseItem,
+);
+
+/**
+ * @summary Add a communication log entry (steward only)
+ */
+export const PostApiGrievancesIdCommunicationsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostApiGrievancesIdCommunicationsBody = zod.object({
+  contactMethod: zod.enum([
+    "in_person",
+    "phone",
+    "text",
+    "email",
+    "voicemail",
+    "no_answer",
+  ]),
+  summary: zod.string(),
+  contactDate: zod.coerce.date(),
+  memberId: zod.number().optional(),
+});
+
+/**
+ * @summary List discipline records for a member (steward only)
+ */
+export const GetApiMembersIdDisciplineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiMembersIdDisciplineResponseItem = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  disciplineType: zod.enum([
+    "verbal_warning",
+    "written_warning",
+    "suspension_paid",
+    "suspension_unpaid",
+    "termination",
+    "other",
+  ]),
+  incidentDate: zod.coerce.date().nullish(),
+  issuedDate: zod.coerce.date(),
+  description: zod.string(),
+  responseFiled: zod.boolean(),
+  grievanceId: zod.number().nullish(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiMembersIdDisciplineResponse = zod.array(
+  GetApiMembersIdDisciplineResponseItem,
+);
+
+/**
+ * @summary Add a discipline record (steward only)
+ */
+export const PostApiMembersIdDisciplineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postApiMembersIdDisciplineBodyResponseFiledDefault = false;
+
+export const PostApiMembersIdDisciplineBody = zod.object({
+  disciplineType: zod.enum([
+    "verbal_warning",
+    "written_warning",
+    "suspension_paid",
+    "suspension_unpaid",
+    "termination",
+    "other",
+  ]),
+  incidentDate: zod.coerce.date().nullish(),
+  issuedDate: zod.coerce.date(),
+  description: zod.string(),
+  responseFiled: zod
+    .boolean()
+    .default(postApiMembersIdDisciplineBodyResponseFiledDefault),
+  grievanceId: zod.number().nullish(),
+});
+
+/**
+ * @summary Update a discipline record (steward only)
+ */
+export const PatchApiMembersIdDisciplineRecordIdParams = zod.object({
+  id: zod.coerce.number(),
+  recordId: zod.coerce.number(),
+});
+
+export const PatchApiMembersIdDisciplineRecordIdBody = zod.object({
+  disciplineType: zod
+    .enum([
+      "verbal_warning",
+      "written_warning",
+      "suspension_paid",
+      "suspension_unpaid",
+      "termination",
+      "other",
+    ])
+    .optional(),
+  incidentDate: zod.coerce.date().nullish(),
+  issuedDate: zod.coerce.date().optional(),
+  description: zod.string().optional(),
+  responseFiled: zod.boolean().optional(),
+  grievanceId: zod.number().nullish(),
+});
+
+export const PatchApiMembersIdDisciplineRecordIdResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  disciplineType: zod.enum([
+    "verbal_warning",
+    "written_warning",
+    "suspension_paid",
+    "suspension_unpaid",
+    "termination",
+    "other",
+  ]),
+  incidentDate: zod.coerce.date().nullish(),
+  issuedDate: zod.coerce.date(),
+  description: zod.string(),
+  responseFiled: zod.boolean(),
+  grievanceId: zod.number().nullish(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a discipline record (steward only)
+ */
+export const DeleteApiMembersIdDisciplineRecordIdParams = zod.object({
+  id: zod.coerce.number(),
+  recordId: zod.coerce.number(),
+});
+
+export const DeleteApiMembersIdDisciplineRecordIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get onboarding checklist for a member (steward only)
+ */
+export const GetApiMembersIdOnboardingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetApiMembersIdOnboardingResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  cardSigned: zod.boolean(),
+  duesExplained: zod.boolean(),
+  cbaProvided: zod.boolean(),
+  stewardIntroduced: zod.boolean(),
+  rightsExplained: zod.boolean(),
+  benefitsExplained: zod.boolean(),
+  completedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update onboarding checklist (steward only)
+ */
+export const PatchApiMembersIdOnboardingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchApiMembersIdOnboardingBody = zod.object({
+  cardSigned: zod.boolean().optional(),
+  duesExplained: zod.boolean().optional(),
+  cbaProvided: zod.boolean().optional(),
+  stewardIntroduced: zod.boolean().optional(),
+  rightsExplained: zod.boolean().optional(),
+  benefitsExplained: zod.boolean().optional(),
+});
+
+export const PatchApiMembersIdOnboardingResponse = zod.object({
+  id: zod.number(),
+  memberId: zod.number(),
+  cardSigned: zod.boolean(),
+  duesExplained: zod.boolean(),
+  cbaProvided: zod.boolean(),
+  stewardIntroduced: zod.boolean(),
+  rightsExplained: zod.boolean(),
+  benefitsExplained: zod.boolean(),
+  completedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List grievance templates (steward only)
+ */
+export const GetApiGrievanceTemplatesResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  violationType: zod.enum([
+    "discipline",
+    "scheduling",
+    "seniority_bypass",
+    "harassment",
+    "wages",
+    "benefits",
+    "other",
+  ]),
+  descriptionTemplate: zod.string(),
+  contractArticle: zod.string().nullish(),
+  defaultStep: zod.number(),
+  isGlobal: zod.boolean(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiGrievanceTemplatesResponse = zod.array(
+  GetApiGrievanceTemplatesResponseItem,
+);
+
+/**
+ * @summary Create a grievance template (steward only)
+ */
+export const postApiGrievanceTemplatesBodyDefaultStepDefault = 1;
+export const postApiGrievanceTemplatesBodyDefaultStepMax = 5;
+
+export const PostApiGrievanceTemplatesBody = zod.object({
+  title: zod.string(),
+  violationType: zod.enum([
+    "discipline",
+    "scheduling",
+    "seniority_bypass",
+    "harassment",
+    "wages",
+    "benefits",
+    "other",
+  ]),
+  descriptionTemplate: zod.string(),
+  contractArticle: zod.string().nullish(),
+  defaultStep: zod
+    .number()
+    .min(1)
+    .max(postApiGrievanceTemplatesBodyDefaultStepMax)
+    .default(postApiGrievanceTemplatesBodyDefaultStepDefault),
+});
+
+/**
+ * @summary Update a grievance template (steward only)
+ */
+export const PatchApiGrievanceTemplatesIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const patchApiGrievanceTemplatesIdBodyDefaultStepMax = 5;
+
+export const PatchApiGrievanceTemplatesIdBody = zod.object({
+  title: zod.string().optional(),
+  violationType: zod
+    .enum([
+      "discipline",
+      "scheduling",
+      "seniority_bypass",
+      "harassment",
+      "wages",
+      "benefits",
+      "other",
+    ])
+    .optional(),
+  descriptionTemplate: zod.string().optional(),
+  contractArticle: zod.string().nullish(),
+  defaultStep: zod
+    .number()
+    .min(1)
+    .max(patchApiGrievanceTemplatesIdBodyDefaultStepMax)
+    .optional(),
+});
+
+export const PatchApiGrievanceTemplatesIdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  violationType: zod.enum([
+    "discipline",
+    "scheduling",
+    "seniority_bypass",
+    "harassment",
+    "wages",
+    "benefits",
+    "other",
+  ]),
+  descriptionTemplate: zod.string(),
+  contractArticle: zod.string().nullish(),
+  defaultStep: zod.number(),
+  isGlobal: zod.boolean(),
+  createdBy: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a grievance template (steward only)
+ */
+export const DeleteApiGrievanceTemplatesIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApiGrievanceTemplatesIdResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get application settings
+ */
+export const GetApiSettingsResponse = zod.object({
+  cbaExpiryDate: zod.coerce.date().nullish(),
+  bargainingPrepDaysNotice: zod.number().optional(),
+  timezone: zod.string().optional(),
+  stepDeadlines: zod
+    .object({
+      step1Days: zod.number().optional(),
+      step2Days: zod.number().optional(),
+      step3Days: zod.number().optional(),
+      step4Days: zod.number().optional(),
+      arbitrationDays: zod.number().optional(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Update application settings (admin only)
+ */
+export const PatchApiSettingsBody = zod.object({
+  cbaExpiryDate: zod.coerce.date().nullish(),
+  bargainingPrepDaysNotice: zod.number().optional(),
+  timezone: zod.string().optional(),
+  stepDeadlines: zod
+    .object({
+      step1Days: zod.number().optional(),
+      step2Days: zod.number().optional(),
+      step3Days: zod.number().optional(),
+      step4Days: zod.number().optional(),
+      arbitrationDays: zod.number().optional(),
+    })
+    .optional(),
+});
+
+export const PatchApiSettingsResponse = zod.object({
+  cbaExpiryDate: zod.coerce.date().nullish(),
+  bargainingPrepDaysNotice: zod.number().optional(),
+  timezone: zod.string().optional(),
+  stepDeadlines: zod
+    .object({
+      step1Days: zod.number().optional(),
+      step2Days: zod.number().optional(),
+      step3Days: zod.number().optional(),
+      step4Days: zod.number().optional(),
+      arbitrationDays: zod.number().optional(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Get CBA meta-information (expiry, bargaining prep status)
+ */
+export const GetApiCbaInfoResponse = zod.object({
+  cbaExpiryDate: zod.coerce.date().nullish(),
+  bargainingPrepDaysNotice: zod.number().optional(),
+  daysUntilExpiry: zod.number().nullish(),
+  inBargainingPrep: zod.boolean().optional(),
+});
+
+/**
+ * @summary Query audit logs (admin only)
+ */
+export const getApiAuditLogsQueryLimitDefault = 50;
+export const getApiAuditLogsQueryLimitMax = 200;
+
+export const getApiAuditLogsQueryOffsetDefault = 0;
+
+export const GetApiAuditLogsQueryParams = zod.object({
+  entityType: zod.coerce.string().optional(),
+  entityId: zod.coerce.number().optional(),
+  userId: zod.coerce.number().optional(),
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+  limit: zod.coerce
+    .number()
+    .max(getApiAuditLogsQueryLimitMax)
+    .default(getApiAuditLogsQueryLimitDefault),
+  offset: zod.coerce.number().default(getApiAuditLogsQueryOffsetDefault),
+});
+
+export const GetApiAuditLogsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number().nullish(),
+  action: zod.string(),
+  entityType: zod.string().nullish(),
+  entityId: zod.number().nullish(),
+  details: zod.object({}).passthrough().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetApiAuditLogsResponse = zod.array(GetApiAuditLogsResponseItem);

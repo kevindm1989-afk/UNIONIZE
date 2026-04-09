@@ -365,7 +365,7 @@ router.delete("/:id", asyncHandler(async (req: Request, res: Response) => {
   if (request.status !== "pending") { res.status(400).json({ error: "Only pending requests can be deleted", code: "INVALID_STATUS" }); return; }
 
   await db.delete(accessRequestsTable).where(eq(accessRequestsTable.id, id));
-  res.status(204).end();
+  res.json({ ok: true });
 }));
 
 export default router;

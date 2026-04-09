@@ -24,6 +24,36 @@ tags:
     description: CBA document management
   - name: anthropic
     description: Anthropic AI chat operations
+  - name: auth
+    description: Authentication, access requests, and user management
+  - name: meetings
+    description: Union meetings management
+  - name: polls
+    description: Member polls and voting
+  - name: coverage
+    description: Steward coverage and bargaining unit map
+  - name: stats
+    description: Statistics and reporting
+  - name: member-portal
+    description: Member self-service portal
+  - name: push
+    description: Push notifications
+  - name: journal
+    description: Case journal entries
+  - name: just-cause
+    description: Just cause assessment
+  - name: communications
+    description: Member communication log
+  - name: discipline
+    description: Discipline records
+  - name: onboarding
+    description: Member onboarding checklist
+  - name: grievance-templates
+    description: Grievance filing templates
+  - name: settings
+    description: Application settings
+  - name: audit-logs
+    description: Audit log
 
 paths:
   /healthz:
@@ -623,7 +653,1320 @@ paths:
           description: SSE stream of assistant response chunks
           content:
             text/event-stream: {}
+
+  # ── AUTH / ACCESS REQUESTS ───────────────────────────────────────────────────
+
+  /auth/request-access:
+    post:
+      operationId: postApiAuthRequestAccess
+      tags: [auth]
+      summary: Submit a new portal access request (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccessRequestBody"
+      responses:
+        "201":
+          description: Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/access-requests:
+    get:
+      operationId: getApiAccessRequests
+      tags: [auth]
+      summary: List access requests (admin)
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        "200":
+          description: List of access requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /auth/access-requests/{id}:
+    get:
+      operationId: getApiAccessRequestsId
+      tags: [auth]
+      summary: Get a single access request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Access request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteApiAccessRequestsId
+      tags: [auth]
+      summary: Reject and delete an access request (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth/access-requests/{id}/approve:
+    patch:
+      operationId: patchApiAccessRequestsIdApprove
+      tags: [auth]
+      summary: Approve an access request and create user account (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveAccessRequestBody"
+      responses:
+        "200":
+          description: User created with temporary password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveAccessRequestResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/access-requests/{id}/reject:
+    patch:
+      operationId: patchApiAccessRequestsIdReject
+      tags: [auth]
+      summary: Reject an access request (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectAccessRequestBody"
+      responses:
+        "200":
+          description: Request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── AUTH / USERS ──────────────────────────────────────────────────────────────
+
+  /auth/users:
+    get:
+      operationId: getApiAuthUsers
+      tags: [auth]
+      summary: List all portal users (admin)
+      parameters:
+        - in: query
+          name: memberId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuthUser"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: postApiAuthUsers
+      tags: [auth]
+      summary: Create a portal user manually (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAuthUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/users/{id}:
+    patch:
+      operationId: patchApiAuthUsersId
+      tags: [auth]
+      summary: Update a user (toggle active, change role, reset password) (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAuthUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth/roles:
+    get:
+      operationId: getApiAuthRoles
+      tags: [auth]
+      summary: List all roles and their permissions
+      responses:
+        "200":
+          description: Roles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RolePermissions"
+
+  /auth/permissions:
+    get:
+      operationId: getApiAuthPermissions
+      tags: [auth]
+      summary: Get current user permissions
+      responses:
+        "200":
+          description: Permissions for authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPermissions"
+
+  # ── MEETINGS ─────────────────────────────────────────────────────────────────
+
+  /meetings:
+    get:
+      operationId: getApiMeetings
+      tags: [meetings]
+      summary: List meetings
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [executive, general, stewards]
+        - in: query
+          name: upcoming
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of meetings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Meeting"
+    post:
+      operationId: postApiMeetings
+      tags: [meetings]
+      summary: Create a meeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMeetingBody"
+      responses:
+        "201":
+          description: Created meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+
+  /meetings/{id}:
+    get:
+      operationId: getApiMeetingsId
+      tags: [meetings]
+      summary: Get a meeting by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: patchApiMeetingsId
+      tags: [meetings]
+      summary: Update a meeting
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeetingBody"
+      responses:
+        "200":
+          description: Updated meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+    delete:
+      operationId: deleteApiMeetingsId
+      tags: [meetings]
+      summary: Delete a meeting
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── POLLS ─────────────────────────────────────────────────────────────────────
+
+  /polls:
+    get:
+      operationId: getApiPolls
+      tags: [polls]
+      summary: List active polls
+      responses:
+        "200":
+          description: List of polls with user response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PollWithResponse"
+    post:
+      operationId: postApiPolls
+      tags: [polls]
+      summary: Create a poll (admin/chair only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePollBody"
+      responses:
+        "201":
+          description: Created poll
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Poll"
+
+  /polls/{id}:
+    get:
+      operationId: getApiPollsId
+      tags: [polls]
+      summary: Get a poll by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Poll
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Poll"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: patchApiPollsId
+      tags: [polls]
+      summary: Update a poll (admin/chair only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePollBody"
+      responses:
+        "200":
+          description: Updated poll
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Poll"
+    delete:
+      operationId: deleteApiPollsId
+      tags: [polls]
+      summary: Delete a poll (admin/chair only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /polls/{id}/respond:
+    post:
+      operationId: postApiPollsIdRespond
+      tags: [polls]
+      summary: Submit a vote on a poll
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PollRespondBody"
+      responses:
+        "201":
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /polls/{id}/results:
+    get:
+      operationId: getApiPollsIdResults
+      tags: [polls]
+      summary: Get poll results (members see results after poll closes)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Poll results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollResults"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── COVERAGE ──────────────────────────────────────────────────────────────────
+
+  /coverage:
+    get:
+      operationId: getApiCoverage
+      tags: [coverage]
+      summary: List steward coverage assignments
+      responses:
+        "200":
+          description: Coverage list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Coverage"
+    post:
+      operationId: postApiCoverage
+      tags: [coverage]
+      summary: Create a coverage assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCoverageBody"
+      responses:
+        "201":
+          description: Created coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coverage"
+
+  /coverage/{id}:
+    patch:
+      operationId: patchApiCoverageId
+      tags: [coverage]
+      summary: Update a coverage assignment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCoverageBody"
+      responses:
+        "200":
+          description: Updated coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coverage"
+    delete:
+      operationId: deleteApiCoverageId
+      tags: [coverage]
+      summary: Delete a coverage assignment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── STATS ─────────────────────────────────────────────────────────────────────
+
+  /stats/overview:
+    get:
+      operationId: getApiStats
+      tags: [stats]
+      summary: Get combined statistics overview (steward only)
+      responses:
+        "200":
+          description: Statistics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsOverview"
+
+  # ── MEMBER PORTAL ─────────────────────────────────────────────────────────────
+
+  /member-portal/profile:
+    get:
+      operationId: getApiMemberPortalProfile
+      tags: [member-portal]
+      summary: Get the current member's own profile
+      responses:
+        "200":
+          description: Member profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPortalProfile"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    patch:
+      operationId: patchApiMemberPortalProfile
+      tags: [member-portal]
+      summary: Update own notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberPortalProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPortalProfile"
+
+  /member-portal/grievances:
+    get:
+      operationId: getApiMemberPortalGrievances
+      tags: [member-portal]
+      summary: List the current member's own grievances
+      responses:
+        "200":
+          description: Member's grievances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberPortalGrievance"
+    post:
+      operationId: postApiMemberPortalGrievances
+      tags: [member-portal]
+      summary: File a grievance as a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemberPortalGrievanceBody"
+      responses:
+        "201":
+          description: Filed grievance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPortalGrievance"
+
+  /member-portal/grievances/{id}:
+    get:
+      operationId: getApiMemberPortalGrievancesId
+      tags: [member-portal]
+      summary: Get details of one of the current member's grievances
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Grievance detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPortalGrievance"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /member-portal/ai/chat:
+    post:
+      operationId: postApiMemberPortalAiChat
+      tags: [member-portal]
+      summary: Send messages to the CBA AI assistant (member role, SSE stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatBody"
+      responses:
+        "200":
+          description: SSE stream of assistant response
+          content:
+            text/event-stream: {}
+
+  # ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+
+  /push/vapid-public-key:
+    get:
+      operationId: getApiPushVapidPublicKey
+      tags: [push]
+      summary: Get VAPID public key for push subscription
+      responses:
+        "200":
+          description: VAPID public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VapidPublicKeyResponse"
+
+  /push/subscribe:
+    post:
+      operationId: postApiPushSubscribe
+      tags: [push]
+      summary: Subscribe device to push notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscribeBody"
+      responses:
+        "201":
+          description: Subscribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+    delete:
+      operationId: deleteApiPushSubscribe
+      tags: [push]
+      summary: Unsubscribe device from push notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+              required: [endpoint]
+      responses:
+        "200":
+          description: Unsubscribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /push/send:
+    post:
+      operationId: postApiPushSend
+      tags: [push]
+      summary: Send a push notification (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSendBody"
+      responses:
+        "200":
+          description: Notification sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── CASE JOURNAL ──────────────────────────────────────────────────────────────
+
+  /grievances/{id}/journal:
+    get:
+      operationId: getApiGrievancesIdJournal
+      tags: [journal]
+      summary: List journal entries for a grievance (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntry"
+    post:
+      operationId: postApiGrievancesIdJournal
+      tags: [journal]
+      summary: Add a journal entry (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJournalEntryBody"
+      responses:
+        "201":
+          description: Created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /grievances/{id}/journal/{entryId}:
+    patch:
+      operationId: patchApiGrievancesIdJournalEntryId
+      tags: [journal]
+      summary: Update a journal entry (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJournalEntryBody"
+      responses:
+        "200":
+          description: Updated journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+    delete:
+      operationId: deleteApiGrievancesIdJournalEntryId
+      tags: [journal]
+      summary: Delete a journal entry (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── JUST CAUSE ────────────────────────────────────────────────────────────────
+
+  /grievances/{id}/just-cause:
+    get:
+      operationId: getApiGrievancesIdJustCause
+      tags: [just-cause]
+      summary: Get just cause assessment for a grievance (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Just cause assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JustCause"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: postApiGrievancesIdJustCause
+      tags: [just-cause]
+      summary: Create or update just cause assessment (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJustCauseBody"
+      responses:
+        "200":
+          description: Just cause assessment saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JustCause"
+
+  # ── COMMUNICATION LOG ─────────────────────────────────────────────────────────
+
+  /grievances/{id}/communications:
+    get:
+      operationId: getApiGrievancesIdCommunications
+      tags: [communications]
+      summary: List communication log for a grievance (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Communication log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommunicationLog"
+    post:
+      operationId: postApiGrievancesIdCommunications
+      tags: [communications]
+      summary: Add a communication log entry (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommunicationLogBody"
+      responses:
+        "201":
+          description: Created log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunicationLog"
+
+  # ── DISCIPLINE ────────────────────────────────────────────────────────────────
+
+  /members/{id}/discipline:
+    get:
+      operationId: getApiMembersIdDiscipline
+      tags: [discipline]
+      summary: List discipline records for a member (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Discipline records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DisciplineRecord"
+    post:
+      operationId: postApiMembersIdDiscipline
+      tags: [discipline]
+      summary: Add a discipline record (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDisciplineRecordBody"
+      responses:
+        "201":
+          description: Created discipline record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisciplineRecord"
+
+  /members/{id}/discipline/{recordId}:
+    patch:
+      operationId: patchApiMembersIdDisciplineRecordId
+      tags: [discipline]
+      summary: Update a discipline record (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: recordId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDisciplineRecordBody"
+      responses:
+        "200":
+          description: Updated discipline record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisciplineRecord"
+    delete:
+      operationId: deleteApiMembersIdDisciplineRecordId
+      tags: [discipline]
+      summary: Delete a discipline record (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: recordId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── ONBOARDING ────────────────────────────────────────────────────────────────
+
+  /members/{id}/onboarding:
+    get:
+      operationId: getApiMembersIdOnboarding
+      tags: [onboarding]
+      summary: Get onboarding checklist for a member (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Onboarding checklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingChecklist"
+    patch:
+      operationId: patchApiMembersIdOnboarding
+      tags: [onboarding]
+      summary: Update onboarding checklist (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOnboardingBody"
+      responses:
+        "200":
+          description: Updated checklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingChecklist"
+
+  # ── GRIEVANCE TEMPLATES ───────────────────────────────────────────────────────
+
+  /grievance-templates:
+    get:
+      operationId: getApiGrievanceTemplates
+      tags: [grievance-templates]
+      summary: List grievance templates (steward only)
+      responses:
+        "200":
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GrievanceTemplate"
+    post:
+      operationId: postApiGrievanceTemplates
+      tags: [grievance-templates]
+      summary: Create a grievance template (steward only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGrievanceTemplateBody"
+      responses:
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrievanceTemplate"
+
+  /grievance-templates/{id}:
+    patch:
+      operationId: patchApiGrievanceTemplatesId
+      tags: [grievance-templates]
+      summary: Update a grievance template (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGrievanceTemplateBody"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrievanceTemplate"
+    delete:
+      operationId: deleteApiGrievanceTemplatesId
+      tags: [grievance-templates]
+      summary: Delete a grievance template (steward only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── SETTINGS ──────────────────────────────────────────────────────────────────
+
+  /settings:
+    get:
+      operationId: getApiSettings
+      tags: [settings]
+      summary: Get application settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: patchApiSettings
+      tags: [settings]
+      summary: Update application settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /cba-info:
+    get:
+      operationId: getApiCbaInfo
+      tags: [settings]
+      summary: Get CBA meta-information (expiry, bargaining prep status)
+      responses:
+        "200":
+          description: CBA info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CbaInfo"
+
+  # ── AUDIT LOGS ────────────────────────────────────────────────────────────────
+
+  /audit-logs:
+    get:
+      operationId: getApiAuditLogs
+      tags: [audit-logs]
+      summary: Query audit logs (admin only)
+      parameters:
+        - in: query
+          name: entityType
+          schema:
+            type: string
+        - in: query
+          name: entityId
+          schema:
+            type: integer
+        - in: query
+          name: userId
+          schema:
+            type: integer
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+
 components:
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Not authenticated
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict with existing resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -1151,3 +2494,1080 @@ components:
           type: string
       required:
         - error
+
+    # ── COMMON ────────────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required: [error]
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    # ── AUTH / ACCESS REQUESTS ────────────────────────────────────────────────
+
+    AccessRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        username:
+          type: string
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        employeeId:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        shift:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        requestedRole:
+          type: string
+          nullable: true
+        roleJustification:
+          type: string
+          nullable: true
+        approvedRole:
+          type: string
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, username, status, createdAt]
+
+    CreateAccessRequestBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+          nullable: true
+        employeeId:
+          type: string
+          maxLength: 50
+          nullable: true
+        department:
+          type: string
+          maxLength: 100
+          nullable: true
+        shift:
+          type: string
+          enum: [days, afternoons, nights, rotating]
+          nullable: true
+        requestedRole:
+          type: string
+          enum: [member, steward, co_chair]
+          default: member
+        roleJustification:
+          type: string
+          maxLength: 2000
+          nullable: true
+        message:
+          type: string
+          maxLength: 1000
+          nullable: true
+      required: [firstName, lastName, email]
+
+    ApproveAccessRequestBody:
+      type: object
+      properties:
+        approvedRole:
+          type: string
+          enum: [member, steward, co_chair, admin]
+      required: [approvedRole]
+
+    ApproveAccessRequestResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        tempPassword:
+          type: string
+      required: [user, tempPassword]
+
+    RejectAccessRequestBody:
+      type: object
+      properties:
+        rejectionReason:
+          type: string
+          minLength: 1
+      required: [rejectionReason]
+
+    # ── AUTH / USERS ──────────────────────────────────────────────────────────
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, chair, steward, co_chair, member]
+        isActive:
+          type: boolean
+        linkedMemberId:
+          type: integer
+          nullable: true
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, username, displayName, role, isActive, createdAt]
+
+    CreateAuthUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, chair, steward, co_chair, member]
+        password:
+          type: string
+          minLength: 8
+      required: [username, displayName, password]
+
+    UpdateAuthUserBody:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+        role:
+          type: string
+          enum: [admin, chair, steward, co_chair, member]
+        password:
+          type: string
+          minLength: 8
+          nullable: true
+        displayName:
+          type: string
+        linkedMemberId:
+          type: integer
+          nullable: true
+
+    RolePermissions:
+      type: object
+      properties:
+        role:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+      required: [role, permissions]
+
+    UserPermissions:
+      type: object
+      properties:
+        role:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+      required: [role, permissions]
+
+    # ── MEETINGS ──────────────────────────────────────────────────────────────
+
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [executive, general, stewards]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        agenda:
+          type: string
+          nullable: true
+        minutes:
+          type: string
+          nullable: true
+        attendees:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, type, date, createdAt]
+
+    CreateMeetingBody:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [executive, general, stewards]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        agenda:
+          type: string
+          nullable: true
+        minutes:
+          type: string
+          nullable: true
+        attendees:
+          type: array
+          items:
+            type: integer
+          nullable: true
+      required: [title, type, date]
+
+    UpdateMeetingBody:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [executive, general, stewards]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        agenda:
+          type: string
+          nullable: true
+        minutes:
+          type: string
+          nullable: true
+        attendees:
+          type: array
+          items:
+            type: integer
+          nullable: true
+
+    # ── POLLS ─────────────────────────────────────────────────────────────────
+
+    Poll:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        pollType:
+          type: string
+          enum: [yes_no, multiple_choice]
+        options:
+          type: array
+          items:
+            type: string
+          nullable: true
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+        targetRole:
+          type: string
+          enum: [all, member, steward]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, pollType, startsAt, endsAt, isActive, targetRole, createdAt]
+
+    PollWithResponse:
+      allOf:
+        - $ref: "#/components/schemas/Poll"
+        - type: object
+          properties:
+            userResponse:
+              type: string
+              nullable: true
+            isExpired:
+              type: boolean
+          required: [isExpired]
+
+    CreatePollBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        pollType:
+          type: string
+          enum: [yes_no, multiple_choice]
+          default: yes_no
+        options:
+          type: array
+          items:
+            type: string
+          nullable: true
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        endsAt:
+          type: string
+          format: date-time
+        targetRole:
+          type: string
+          enum: [all, member, steward]
+          default: all
+      required: [title, endsAt]
+
+    UpdatePollBody:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+        endsAt:
+          type: string
+          format: date-time
+
+    PollRespondBody:
+      type: object
+      properties:
+        response:
+          type: string
+      required: [response]
+
+    PollResults:
+      type: object
+      properties:
+        poll:
+          $ref: "#/components/schemas/Poll"
+        total:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              response:
+                type: string
+              count:
+                type: integer
+            required: [response, count]
+      required: [poll, total, results]
+
+    # ── COVERAGE ──────────────────────────────────────────────────────────────
+
+    Coverage:
+      type: object
+      properties:
+        id:
+          type: integer
+        stewardId:
+          type: integer
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        shift:
+          type: string
+          enum: [days, afternoons, nights, rotating]
+          nullable: true
+        areaNotes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, createdAt]
+
+    CreateCoverageBody:
+      type: object
+      properties:
+        stewardId:
+          type: integer
+        department:
+          type: string
+        shift:
+          type: string
+          enum: [days, afternoons, nights, rotating]
+        areaNotes:
+          type: string
+          nullable: true
+
+    UpdateCoverageBody:
+      type: object
+      properties:
+        stewardId:
+          type: integer
+        department:
+          type: string
+        shift:
+          type: string
+          enum: [days, afternoons, nights, rotating]
+        areaNotes:
+          type: string
+          nullable: true
+
+    # ── STATS ─────────────────────────────────────────────────────────────────
+
+    StatsOverview:
+      type: object
+      properties:
+        grievances:
+          type: object
+          nullable: true
+        members:
+          type: object
+          nullable: true
+        disciplines:
+          type: object
+          nullable: true
+      required: []
+
+    # ── MEMBER PORTAL ─────────────────────────────────────────────────────────
+
+    MemberPortalProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        employeeId:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        classification:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        smsEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+      required: [id, name, smsEnabled, emailEnabled, pushEnabled]
+
+    UpdateMemberPortalProfileBody:
+      type: object
+      properties:
+        smsEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+
+    MemberPortalGrievance:
+      type: object
+      properties:
+        id:
+          type: integer
+        grievanceNumber:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [open, pending_response, pending_hearing, resolved, withdrawn]
+        step:
+          type: integer
+        filedDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        resolvedDate:
+          type: string
+          format: date
+          nullable: true
+        resolution:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, grievanceNumber, title, status, step, filedDate, createdAt]
+
+    CreateMemberPortalGrievanceBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        contractArticle:
+          type: string
+          nullable: true
+        filedDate:
+          type: string
+          format: date
+      required: [title, filedDate]
+
+    AiChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+      required: [role, content]
+
+    AiChatBody:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiChatMessage"
+          minItems: 1
+          maxItems: 50
+      required: [messages]
+
+    # ── PUSH ──────────────────────────────────────────────────────────────────
+
+    VapidPublicKeyResponse:
+      type: object
+      properties:
+        publicKey:
+          type: string
+      required: [publicKey]
+
+    PushSubscribeBody:
+      type: object
+      properties:
+        endpoint:
+          type: string
+        p256dh:
+          type: string
+        auth:
+          type: string
+      required: [endpoint, p256dh, auth]
+
+    PushSendBody:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        targetRole:
+          type: string
+          enum: [all, member, steward, admin]
+          nullable: true
+        targetDepartment:
+          type: string
+          nullable: true
+      required: [title, body]
+
+    # ── JOURNAL ───────────────────────────────────────────────────────────────
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        grievanceId:
+          type: integer
+        authorId:
+          type: integer
+          nullable: true
+        entryType:
+          type: string
+          enum: [note, call, meeting, email, management_contact]
+        content:
+          type: string
+        isPrivate:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, grievanceId, entryType, content, isPrivate, createdAt, updatedAt]
+
+    CreateJournalEntryBody:
+      type: object
+      properties:
+        entryType:
+          type: string
+          enum: [note, call, meeting, email, management_contact]
+        content:
+          type: string
+        isPrivate:
+          type: boolean
+          default: true
+      required: [entryType, content]
+
+    UpdateJournalEntryBody:
+      type: object
+      properties:
+        entryType:
+          type: string
+          enum: [note, call, meeting, email, management_contact]
+        content:
+          type: string
+        isPrivate:
+          type: boolean
+
+    # ── JUST CAUSE ────────────────────────────────────────────────────────────
+
+    JustCause:
+      type: object
+      properties:
+        id:
+          type: integer
+        grievanceId:
+          type: integer
+        adequateNotice:
+          type: boolean
+        reasonableRule:
+          type: boolean
+        investigationConducted:
+          type: boolean
+        investigationFair:
+          type: boolean
+        proofSufficient:
+          type: boolean
+        penaltyConsistent:
+          type: boolean
+        penaltyProgressive:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, grievanceId, adequateNotice, reasonableRule, investigationConducted, investigationFair, proofSufficient, penaltyConsistent, penaltyProgressive, createdAt]
+
+    CreateJustCauseBody:
+      type: object
+      properties:
+        adequateNotice:
+          type: boolean
+        reasonableRule:
+          type: boolean
+        investigationConducted:
+          type: boolean
+        investigationFair:
+          type: boolean
+        proofSufficient:
+          type: boolean
+        penaltyConsistent:
+          type: boolean
+        penaltyProgressive:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+      required: [adequateNotice, reasonableRule, investigationConducted, investigationFair, proofSufficient, penaltyConsistent, penaltyProgressive]
+
+    # ── COMMUNICATION LOG ─────────────────────────────────────────────────────
+
+    CommunicationLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        grievanceId:
+          type: integer
+          nullable: true
+        memberId:
+          type: integer
+          nullable: true
+        contactMethod:
+          type: string
+          enum: [in_person, phone, text, email, voicemail, no_answer]
+        summary:
+          type: string
+        contactDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, contactMethod, summary, contactDate, createdAt]
+
+    CreateCommunicationLogBody:
+      type: object
+      properties:
+        contactMethod:
+          type: string
+          enum: [in_person, phone, text, email, voicemail, no_answer]
+        summary:
+          type: string
+        contactDate:
+          type: string
+          format: date
+        memberId:
+          type: integer
+      required: [contactMethod, summary, contactDate]
+
+    # ── DISCIPLINE ────────────────────────────────────────────────────────────
+
+    DisciplineRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: integer
+        disciplineType:
+          type: string
+          enum: [verbal_warning, written_warning, suspension_paid, suspension_unpaid, termination, other]
+        incidentDate:
+          type: string
+          format: date
+          nullable: true
+        issuedDate:
+          type: string
+          format: date
+        description:
+          type: string
+        responseFiled:
+          type: boolean
+        grievanceId:
+          type: integer
+          nullable: true
+        createdBy:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, memberId, disciplineType, issuedDate, description, responseFiled, createdAt]
+
+    CreateDisciplineRecordBody:
+      type: object
+      properties:
+        disciplineType:
+          type: string
+          enum: [verbal_warning, written_warning, suspension_paid, suspension_unpaid, termination, other]
+        incidentDate:
+          type: string
+          format: date
+          nullable: true
+        issuedDate:
+          type: string
+          format: date
+        description:
+          type: string
+        responseFiled:
+          type: boolean
+          default: false
+        grievanceId:
+          type: integer
+          nullable: true
+      required: [disciplineType, issuedDate, description]
+
+    UpdateDisciplineRecordBody:
+      type: object
+      properties:
+        disciplineType:
+          type: string
+          enum: [verbal_warning, written_warning, suspension_paid, suspension_unpaid, termination, other]
+        incidentDate:
+          type: string
+          format: date
+          nullable: true
+        issuedDate:
+          type: string
+          format: date
+        description:
+          type: string
+        responseFiled:
+          type: boolean
+        grievanceId:
+          type: integer
+          nullable: true
+
+    # ── ONBOARDING ────────────────────────────────────────────────────────────
+
+    OnboardingChecklist:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: integer
+        cardSigned:
+          type: boolean
+        duesExplained:
+          type: boolean
+        cbaProvided:
+          type: boolean
+        stewardIntroduced:
+          type: boolean
+        rightsExplained:
+          type: boolean
+        benefitsExplained:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, memberId, cardSigned, duesExplained, cbaProvided, stewardIntroduced, rightsExplained, benefitsExplained, createdAt]
+
+    UpdateOnboardingBody:
+      type: object
+      properties:
+        cardSigned:
+          type: boolean
+        duesExplained:
+          type: boolean
+        cbaProvided:
+          type: boolean
+        stewardIntroduced:
+          type: boolean
+        rightsExplained:
+          type: boolean
+        benefitsExplained:
+          type: boolean
+
+    # ── GRIEVANCE TEMPLATES ───────────────────────────────────────────────────
+
+    GrievanceTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        violationType:
+          type: string
+          enum: [discipline, scheduling, seniority_bypass, harassment, wages, benefits, other]
+        descriptionTemplate:
+          type: string
+        contractArticle:
+          type: string
+          nullable: true
+        defaultStep:
+          type: integer
+        isGlobal:
+          type: boolean
+        createdBy:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, violationType, descriptionTemplate, defaultStep, isGlobal, createdAt]
+
+    CreateGrievanceTemplateBody:
+      type: object
+      properties:
+        title:
+          type: string
+        violationType:
+          type: string
+          enum: [discipline, scheduling, seniority_bypass, harassment, wages, benefits, other]
+        descriptionTemplate:
+          type: string
+        contractArticle:
+          type: string
+          nullable: true
+        defaultStep:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 1
+      required: [title, violationType, descriptionTemplate]
+
+    UpdateGrievanceTemplateBody:
+      type: object
+      properties:
+        title:
+          type: string
+        violationType:
+          type: string
+          enum: [discipline, scheduling, seniority_bypass, harassment, wages, benefits, other]
+        descriptionTemplate:
+          type: string
+        contractArticle:
+          type: string
+          nullable: true
+        defaultStep:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    # ── SETTINGS ──────────────────────────────────────────────────────────────
+
+    StepDeadlines:
+      type: object
+      properties:
+        step1Days:
+          type: integer
+        step2Days:
+          type: integer
+        step3Days:
+          type: integer
+        step4Days:
+          type: integer
+        arbitrationDays:
+          type: integer
+
+    Settings:
+      type: object
+      properties:
+        cbaExpiryDate:
+          type: string
+          format: date
+          nullable: true
+        bargainingPrepDaysNotice:
+          type: integer
+        timezone:
+          type: string
+        stepDeadlines:
+          $ref: "#/components/schemas/StepDeadlines"
+          nullable: true
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        cbaExpiryDate:
+          type: string
+          format: date
+          nullable: true
+        bargainingPrepDaysNotice:
+          type: integer
+        timezone:
+          type: string
+        stepDeadlines:
+          $ref: "#/components/schemas/StepDeadlines"
+
+    CbaInfo:
+      type: object
+      properties:
+        cbaExpiryDate:
+          type: string
+          format: date
+          nullable: true
+        bargainingPrepDaysNotice:
+          type: integer
+        daysUntilExpiry:
+          type: integer
+          nullable: true
+        inBargainingPrep:
+          type: boolean
+
+    # ── AUDIT LOG ─────────────────────────────────────────────────────────────
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+          nullable: true
+        action:
+          type: string
+        entityType:
+          type: string
+          nullable: true
+        entityId:
+          type: integer
+          nullable: true
+        details:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, action, createdAt]

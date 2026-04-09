@@ -295,6 +295,858 @@ export interface AnthropicError {
   error: string;
 }
 
+export interface ErrorResponse {
+  error: string;
+  code?: string;
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
+export type AccessRequestStatus =
+  (typeof AccessRequestStatus)[keyof typeof AccessRequestStatus];
+
+export const AccessRequestStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface AccessRequest {
+  id: number;
+  name: string;
+  username: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  employeeId?: string | null;
+  department?: string | null;
+  shift?: string | null;
+  message?: string | null;
+  requestedRole?: string | null;
+  roleJustification?: string | null;
+  approvedRole?: string | null;
+  rejectionReason?: string | null;
+  reviewedBy?: number | null;
+  status: AccessRequestStatus;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+export type CreateAccessRequestBodyShift =
+  | (typeof CreateAccessRequestBodyShift)[keyof typeof CreateAccessRequestBodyShift]
+  | null;
+
+export const CreateAccessRequestBodyShift = {
+  days: "days",
+  afternoons: "afternoons",
+  nights: "nights",
+  rotating: "rotating",
+} as const;
+
+export type CreateAccessRequestBodyRequestedRole =
+  (typeof CreateAccessRequestBodyRequestedRole)[keyof typeof CreateAccessRequestBodyRequestedRole];
+
+export const CreateAccessRequestBodyRequestedRole = {
+  member: "member",
+  steward: "steward",
+  co_chair: "co_chair",
+} as const;
+
+export interface CreateAccessRequestBody {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  firstName: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  lastName: string;
+  /** @maxLength 255 */
+  email: string;
+  /** @maxLength 30 */
+  phone?: string | null;
+  /** @maxLength 50 */
+  employeeId?: string | null;
+  /** @maxLength 100 */
+  department?: string | null;
+  shift?: CreateAccessRequestBodyShift;
+  requestedRole?: CreateAccessRequestBodyRequestedRole;
+  /** @maxLength 2000 */
+  roleJustification?: string | null;
+  /** @maxLength 1000 */
+  message?: string | null;
+}
+
+export type ApproveAccessRequestBodyApprovedRole =
+  (typeof ApproveAccessRequestBodyApprovedRole)[keyof typeof ApproveAccessRequestBodyApprovedRole];
+
+export const ApproveAccessRequestBodyApprovedRole = {
+  member: "member",
+  steward: "steward",
+  co_chair: "co_chair",
+  admin: "admin",
+} as const;
+
+export interface ApproveAccessRequestBody {
+  approvedRole: ApproveAccessRequestBodyApprovedRole;
+}
+
+export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
+
+export const AuthUserRole = {
+  admin: "admin",
+  chair: "chair",
+  steward: "steward",
+  co_chair: "co_chair",
+  member: "member",
+} as const;
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: AuthUserRole;
+  isActive: boolean;
+  linkedMemberId?: number | null;
+  lastLoginAt?: string | null;
+  createdAt: string;
+}
+
+export interface ApproveAccessRequestResponse {
+  user: AuthUser;
+  tempPassword: string;
+}
+
+export interface RejectAccessRequestBody {
+  /** @minLength 1 */
+  rejectionReason: string;
+}
+
+export type CreateAuthUserBodyRole =
+  (typeof CreateAuthUserBodyRole)[keyof typeof CreateAuthUserBodyRole];
+
+export const CreateAuthUserBodyRole = {
+  admin: "admin",
+  chair: "chair",
+  steward: "steward",
+  co_chair: "co_chair",
+  member: "member",
+} as const;
+
+export interface CreateAuthUserBody {
+  username: string;
+  displayName: string;
+  role?: CreateAuthUserBodyRole;
+  /** @minLength 8 */
+  password: string;
+}
+
+export type UpdateAuthUserBodyRole =
+  (typeof UpdateAuthUserBodyRole)[keyof typeof UpdateAuthUserBodyRole];
+
+export const UpdateAuthUserBodyRole = {
+  admin: "admin",
+  chair: "chair",
+  steward: "steward",
+  co_chair: "co_chair",
+  member: "member",
+} as const;
+
+export interface UpdateAuthUserBody {
+  isActive?: boolean;
+  role?: UpdateAuthUserBodyRole;
+  /** @minLength 8 */
+  password?: string | null;
+  displayName?: string;
+  linkedMemberId?: number | null;
+}
+
+export interface RolePermissions {
+  role: string;
+  permissions: string[];
+}
+
+export interface UserPermissions {
+  role: string;
+  permissions: string[];
+}
+
+export type MeetingType = (typeof MeetingType)[keyof typeof MeetingType];
+
+export const MeetingType = {
+  executive: "executive",
+  general: "general",
+  stewards: "stewards",
+} as const;
+
+export interface Meeting {
+  id: number;
+  title: string;
+  type: MeetingType;
+  date: string;
+  location?: string | null;
+  agenda?: string | null;
+  minutes?: string | null;
+  attendees?: number[] | null;
+  createdAt: string;
+}
+
+export type CreateMeetingBodyType =
+  (typeof CreateMeetingBodyType)[keyof typeof CreateMeetingBodyType];
+
+export const CreateMeetingBodyType = {
+  executive: "executive",
+  general: "general",
+  stewards: "stewards",
+} as const;
+
+export interface CreateMeetingBody {
+  title: string;
+  type: CreateMeetingBodyType;
+  date: string;
+  location?: string | null;
+  agenda?: string | null;
+  minutes?: string | null;
+  attendees?: number[] | null;
+}
+
+export type UpdateMeetingBodyType =
+  (typeof UpdateMeetingBodyType)[keyof typeof UpdateMeetingBodyType];
+
+export const UpdateMeetingBodyType = {
+  executive: "executive",
+  general: "general",
+  stewards: "stewards",
+} as const;
+
+export interface UpdateMeetingBody {
+  title?: string;
+  type?: UpdateMeetingBodyType;
+  date?: string;
+  location?: string | null;
+  agenda?: string | null;
+  minutes?: string | null;
+  attendees?: number[] | null;
+}
+
+export type PollPollType = (typeof PollPollType)[keyof typeof PollPollType];
+
+export const PollPollType = {
+  yes_no: "yes_no",
+  multiple_choice: "multiple_choice",
+} as const;
+
+export type PollTargetRole =
+  (typeof PollTargetRole)[keyof typeof PollTargetRole];
+
+export const PollTargetRole = {
+  all: "all",
+  member: "member",
+  steward: "steward",
+} as const;
+
+export interface Poll {
+  id: number;
+  title: string;
+  description?: string | null;
+  pollType: PollPollType;
+  options?: string[] | null;
+  startsAt: string;
+  endsAt: string;
+  createdBy?: number | null;
+  isActive: boolean;
+  targetRole: PollTargetRole;
+  createdAt: string;
+}
+
+export type PollWithResponse = Poll & {
+  userResponse?: string | null;
+  isExpired: boolean;
+};
+
+export type CreatePollBodyPollType =
+  (typeof CreatePollBodyPollType)[keyof typeof CreatePollBodyPollType];
+
+export const CreatePollBodyPollType = {
+  yes_no: "yes_no",
+  multiple_choice: "multiple_choice",
+} as const;
+
+export type CreatePollBodyTargetRole =
+  (typeof CreatePollBodyTargetRole)[keyof typeof CreatePollBodyTargetRole];
+
+export const CreatePollBodyTargetRole = {
+  all: "all",
+  member: "member",
+  steward: "steward",
+} as const;
+
+export interface CreatePollBody {
+  title: string;
+  description?: string | null;
+  pollType?: CreatePollBodyPollType;
+  options?: string[] | null;
+  startsAt?: string | null;
+  endsAt: string;
+  targetRole?: CreatePollBodyTargetRole;
+}
+
+export interface UpdatePollBody {
+  isActive?: boolean;
+  endsAt?: string;
+}
+
+export interface PollRespondBody {
+  response: string;
+}
+
+export type PollResultsResultsItem = {
+  response: string;
+  count: number;
+};
+
+export interface PollResults {
+  poll: Poll;
+  total: number;
+  results: PollResultsResultsItem[];
+}
+
+export type CoverageShift =
+  | (typeof CoverageShift)[keyof typeof CoverageShift]
+  | null;
+
+export const CoverageShift = {
+  days: "days",
+  afternoons: "afternoons",
+  nights: "nights",
+  rotating: "rotating",
+} as const;
+
+export interface Coverage {
+  id: number;
+  stewardId?: number | null;
+  department?: string | null;
+  shift?: CoverageShift;
+  areaNotes?: string | null;
+  createdAt: string;
+}
+
+export type CreateCoverageBodyShift =
+  (typeof CreateCoverageBodyShift)[keyof typeof CreateCoverageBodyShift];
+
+export const CreateCoverageBodyShift = {
+  days: "days",
+  afternoons: "afternoons",
+  nights: "nights",
+  rotating: "rotating",
+} as const;
+
+export interface CreateCoverageBody {
+  stewardId?: number;
+  department?: string;
+  shift?: CreateCoverageBodyShift;
+  areaNotes?: string | null;
+}
+
+export type UpdateCoverageBodyShift =
+  (typeof UpdateCoverageBodyShift)[keyof typeof UpdateCoverageBodyShift];
+
+export const UpdateCoverageBodyShift = {
+  days: "days",
+  afternoons: "afternoons",
+  nights: "nights",
+  rotating: "rotating",
+} as const;
+
+export interface UpdateCoverageBody {
+  stewardId?: number;
+  department?: string;
+  shift?: UpdateCoverageBodyShift;
+  areaNotes?: string | null;
+}
+
+export type StatsOverviewGrievances = { [key: string]: unknown } | null;
+
+export type StatsOverviewMembers = { [key: string]: unknown } | null;
+
+export type StatsOverviewDisciplines = { [key: string]: unknown } | null;
+
+export interface StatsOverview {
+  grievances?: StatsOverviewGrievances;
+  members?: StatsOverviewMembers;
+  disciplines?: StatsOverviewDisciplines;
+}
+
+export interface MemberPortalProfile {
+  id: number;
+  name: string;
+  employeeId?: string | null;
+  department?: string | null;
+  classification?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  smsEnabled: boolean;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+}
+
+export interface UpdateMemberPortalProfileBody {
+  smsEnabled?: boolean;
+  emailEnabled?: boolean;
+  pushEnabled?: boolean;
+}
+
+export type MemberPortalGrievanceStatus =
+  (typeof MemberPortalGrievanceStatus)[keyof typeof MemberPortalGrievanceStatus];
+
+export const MemberPortalGrievanceStatus = {
+  open: "open",
+  pending_response: "pending_response",
+  pending_hearing: "pending_hearing",
+  resolved: "resolved",
+  withdrawn: "withdrawn",
+} as const;
+
+export interface MemberPortalGrievance {
+  id: number;
+  grievanceNumber: string;
+  title: string;
+  status: MemberPortalGrievanceStatus;
+  step: number;
+  filedDate: string;
+  dueDate?: string | null;
+  resolvedDate?: string | null;
+  resolution?: string | null;
+  createdAt: string;
+}
+
+export interface CreateMemberPortalGrievanceBody {
+  title: string;
+  description?: string | null;
+  contractArticle?: string | null;
+  filedDate: string;
+}
+
+export type AiChatMessageRole =
+  (typeof AiChatMessageRole)[keyof typeof AiChatMessageRole];
+
+export const AiChatMessageRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export interface AiChatMessage {
+  role: AiChatMessageRole;
+  /**
+   * @minLength 1
+   * @maxLength 10000
+   */
+  content: string;
+}
+
+export interface AiChatBody {
+  /**
+   * @minItems 1
+   * @maxItems 50
+   */
+  messages: AiChatMessage[];
+}
+
+export interface VapidPublicKeyResponse {
+  publicKey: string;
+}
+
+export interface PushSubscribeBody {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export type PushSendBodyTargetRole =
+  | (typeof PushSendBodyTargetRole)[keyof typeof PushSendBodyTargetRole]
+  | null;
+
+export const PushSendBodyTargetRole = {
+  all: "all",
+  member: "member",
+  steward: "steward",
+  admin: "admin",
+} as const;
+
+export interface PushSendBody {
+  title: string;
+  body: string;
+  targetRole?: PushSendBodyTargetRole;
+  targetDepartment?: string | null;
+}
+
+export type JournalEntryEntryType =
+  (typeof JournalEntryEntryType)[keyof typeof JournalEntryEntryType];
+
+export const JournalEntryEntryType = {
+  note: "note",
+  call: "call",
+  meeting: "meeting",
+  email: "email",
+  management_contact: "management_contact",
+} as const;
+
+export interface JournalEntry {
+  id: number;
+  grievanceId: number;
+  authorId?: number | null;
+  entryType: JournalEntryEntryType;
+  content: string;
+  isPrivate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateJournalEntryBodyEntryType =
+  (typeof CreateJournalEntryBodyEntryType)[keyof typeof CreateJournalEntryBodyEntryType];
+
+export const CreateJournalEntryBodyEntryType = {
+  note: "note",
+  call: "call",
+  meeting: "meeting",
+  email: "email",
+  management_contact: "management_contact",
+} as const;
+
+export interface CreateJournalEntryBody {
+  entryType: CreateJournalEntryBodyEntryType;
+  content: string;
+  isPrivate?: boolean;
+}
+
+export type UpdateJournalEntryBodyEntryType =
+  (typeof UpdateJournalEntryBodyEntryType)[keyof typeof UpdateJournalEntryBodyEntryType];
+
+export const UpdateJournalEntryBodyEntryType = {
+  note: "note",
+  call: "call",
+  meeting: "meeting",
+  email: "email",
+  management_contact: "management_contact",
+} as const;
+
+export interface UpdateJournalEntryBody {
+  entryType?: UpdateJournalEntryBodyEntryType;
+  content?: string;
+  isPrivate?: boolean;
+}
+
+export interface JustCause {
+  id: number;
+  grievanceId: number;
+  adequateNotice: boolean;
+  reasonableRule: boolean;
+  investigationConducted: boolean;
+  investigationFair: boolean;
+  proofSufficient: boolean;
+  penaltyConsistent: boolean;
+  penaltyProgressive: boolean;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreateJustCauseBody {
+  adequateNotice: boolean;
+  reasonableRule: boolean;
+  investigationConducted: boolean;
+  investigationFair: boolean;
+  proofSufficient: boolean;
+  penaltyConsistent: boolean;
+  penaltyProgressive: boolean;
+  notes?: string | null;
+}
+
+export type CommunicationLogContactMethod =
+  (typeof CommunicationLogContactMethod)[keyof typeof CommunicationLogContactMethod];
+
+export const CommunicationLogContactMethod = {
+  in_person: "in_person",
+  phone: "phone",
+  text: "text",
+  email: "email",
+  voicemail: "voicemail",
+  no_answer: "no_answer",
+} as const;
+
+export interface CommunicationLog {
+  id: number;
+  grievanceId?: number | null;
+  memberId?: number | null;
+  contactMethod: CommunicationLogContactMethod;
+  summary: string;
+  contactDate: string;
+  createdAt: string;
+}
+
+export type CreateCommunicationLogBodyContactMethod =
+  (typeof CreateCommunicationLogBodyContactMethod)[keyof typeof CreateCommunicationLogBodyContactMethod];
+
+export const CreateCommunicationLogBodyContactMethod = {
+  in_person: "in_person",
+  phone: "phone",
+  text: "text",
+  email: "email",
+  voicemail: "voicemail",
+  no_answer: "no_answer",
+} as const;
+
+export interface CreateCommunicationLogBody {
+  contactMethod: CreateCommunicationLogBodyContactMethod;
+  summary: string;
+  contactDate: string;
+  memberId?: number;
+}
+
+export type DisciplineRecordDisciplineType =
+  (typeof DisciplineRecordDisciplineType)[keyof typeof DisciplineRecordDisciplineType];
+
+export const DisciplineRecordDisciplineType = {
+  verbal_warning: "verbal_warning",
+  written_warning: "written_warning",
+  suspension_paid: "suspension_paid",
+  suspension_unpaid: "suspension_unpaid",
+  termination: "termination",
+  other: "other",
+} as const;
+
+export interface DisciplineRecord {
+  id: number;
+  memberId: number;
+  disciplineType: DisciplineRecordDisciplineType;
+  incidentDate?: string | null;
+  issuedDate: string;
+  description: string;
+  responseFiled: boolean;
+  grievanceId?: number | null;
+  createdBy?: number | null;
+  createdAt: string;
+}
+
+export type CreateDisciplineRecordBodyDisciplineType =
+  (typeof CreateDisciplineRecordBodyDisciplineType)[keyof typeof CreateDisciplineRecordBodyDisciplineType];
+
+export const CreateDisciplineRecordBodyDisciplineType = {
+  verbal_warning: "verbal_warning",
+  written_warning: "written_warning",
+  suspension_paid: "suspension_paid",
+  suspension_unpaid: "suspension_unpaid",
+  termination: "termination",
+  other: "other",
+} as const;
+
+export interface CreateDisciplineRecordBody {
+  disciplineType: CreateDisciplineRecordBodyDisciplineType;
+  incidentDate?: string | null;
+  issuedDate: string;
+  description: string;
+  responseFiled?: boolean;
+  grievanceId?: number | null;
+}
+
+export type UpdateDisciplineRecordBodyDisciplineType =
+  (typeof UpdateDisciplineRecordBodyDisciplineType)[keyof typeof UpdateDisciplineRecordBodyDisciplineType];
+
+export const UpdateDisciplineRecordBodyDisciplineType = {
+  verbal_warning: "verbal_warning",
+  written_warning: "written_warning",
+  suspension_paid: "suspension_paid",
+  suspension_unpaid: "suspension_unpaid",
+  termination: "termination",
+  other: "other",
+} as const;
+
+export interface UpdateDisciplineRecordBody {
+  disciplineType?: UpdateDisciplineRecordBodyDisciplineType;
+  incidentDate?: string | null;
+  issuedDate?: string;
+  description?: string;
+  responseFiled?: boolean;
+  grievanceId?: number | null;
+}
+
+export interface OnboardingChecklist {
+  id: number;
+  memberId: number;
+  cardSigned: boolean;
+  duesExplained: boolean;
+  cbaProvided: boolean;
+  stewardIntroduced: boolean;
+  rightsExplained: boolean;
+  benefitsExplained: boolean;
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export interface UpdateOnboardingBody {
+  cardSigned?: boolean;
+  duesExplained?: boolean;
+  cbaProvided?: boolean;
+  stewardIntroduced?: boolean;
+  rightsExplained?: boolean;
+  benefitsExplained?: boolean;
+}
+
+export type GrievanceTemplateViolationType =
+  (typeof GrievanceTemplateViolationType)[keyof typeof GrievanceTemplateViolationType];
+
+export const GrievanceTemplateViolationType = {
+  discipline: "discipline",
+  scheduling: "scheduling",
+  seniority_bypass: "seniority_bypass",
+  harassment: "harassment",
+  wages: "wages",
+  benefits: "benefits",
+  other: "other",
+} as const;
+
+export interface GrievanceTemplate {
+  id: number;
+  title: string;
+  violationType: GrievanceTemplateViolationType;
+  descriptionTemplate: string;
+  contractArticle?: string | null;
+  defaultStep: number;
+  isGlobal: boolean;
+  createdBy?: number | null;
+  createdAt: string;
+}
+
+export type CreateGrievanceTemplateBodyViolationType =
+  (typeof CreateGrievanceTemplateBodyViolationType)[keyof typeof CreateGrievanceTemplateBodyViolationType];
+
+export const CreateGrievanceTemplateBodyViolationType = {
+  discipline: "discipline",
+  scheduling: "scheduling",
+  seniority_bypass: "seniority_bypass",
+  harassment: "harassment",
+  wages: "wages",
+  benefits: "benefits",
+  other: "other",
+} as const;
+
+export interface CreateGrievanceTemplateBody {
+  title: string;
+  violationType: CreateGrievanceTemplateBodyViolationType;
+  descriptionTemplate: string;
+  contractArticle?: string | null;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  defaultStep?: number;
+}
+
+export type UpdateGrievanceTemplateBodyViolationType =
+  (typeof UpdateGrievanceTemplateBodyViolationType)[keyof typeof UpdateGrievanceTemplateBodyViolationType];
+
+export const UpdateGrievanceTemplateBodyViolationType = {
+  discipline: "discipline",
+  scheduling: "scheduling",
+  seniority_bypass: "seniority_bypass",
+  harassment: "harassment",
+  wages: "wages",
+  benefits: "benefits",
+  other: "other",
+} as const;
+
+export interface UpdateGrievanceTemplateBody {
+  title?: string;
+  violationType?: UpdateGrievanceTemplateBodyViolationType;
+  descriptionTemplate?: string;
+  contractArticle?: string | null;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  defaultStep?: number;
+}
+
+export interface StepDeadlines {
+  step1Days?: number;
+  step2Days?: number;
+  step3Days?: number;
+  step4Days?: number;
+  arbitrationDays?: number;
+}
+
+export interface Settings {
+  cbaExpiryDate?: string | null;
+  bargainingPrepDaysNotice?: number;
+  timezone?: string;
+  stepDeadlines?: StepDeadlines | null;
+}
+
+export interface UpdateSettingsBody {
+  cbaExpiryDate?: string | null;
+  bargainingPrepDaysNotice?: number;
+  timezone?: string;
+  stepDeadlines?: StepDeadlines;
+}
+
+export interface CbaInfo {
+  cbaExpiryDate?: string | null;
+  bargainingPrepDaysNotice?: number;
+  daysUntilExpiry?: number | null;
+  inBargainingPrep?: boolean;
+}
+
+export type AuditLogDetails = { [key: string]: unknown } | null;
+
+export interface AuditLog {
+  id: number;
+  userId?: number | null;
+  action: string;
+  entityType?: string | null;
+  entityId?: number | null;
+  details?: AuditLogDetails;
+  createdAt: string;
+}
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
+
+/**
+ * Not authenticated
+ */
+export type UnauthorizedResponse = ErrorResponse;
+
+/**
+ * Insufficient permissions
+ */
+export type ForbiddenResponse = ErrorResponse;
+
+/**
+ * Resource not found
+ */
+export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Conflict with existing resource
+ */
+export type ConflictResponse = ErrorResponse;
+
+/**
+ * Validation failed
+ */
+export type ValidationErrorResponse = ErrorResponse;
+
+/**
+ * Too many requests
+ */
+export type RateLimitedResponse = ErrorResponse;
+
 export type ListMembersParams = {
   department?: string;
   classification?: string;
@@ -332,3 +1184,51 @@ export const ListAnnouncementsCategory = {
   meeting: "meeting",
   action: "action",
 } as const;
+
+export type GetApiAccessRequestsParams = {
+  status?: GetApiAccessRequestsStatus;
+};
+
+export type GetApiAccessRequestsStatus =
+  (typeof GetApiAccessRequestsStatus)[keyof typeof GetApiAccessRequestsStatus];
+
+export const GetApiAccessRequestsStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export type GetApiAuthUsersParams = {
+  memberId?: number;
+};
+
+export type GetApiMeetingsParams = {
+  type?: GetApiMeetingsType;
+  upcoming?: boolean;
+};
+
+export type GetApiMeetingsType =
+  (typeof GetApiMeetingsType)[keyof typeof GetApiMeetingsType];
+
+export const GetApiMeetingsType = {
+  executive: "executive",
+  general: "general",
+  stewards: "stewards",
+} as const;
+
+export type DeleteApiPushSubscribeBody = {
+  endpoint: string;
+};
+
+export type GetApiAuditLogsParams = {
+  entityType?: string;
+  entityId?: number;
+  userId?: number;
+  from?: string;
+  to?: string;
+  /**
+   * @maximum 200
+   */
+  limit?: number;
+  offset?: number;
+};
