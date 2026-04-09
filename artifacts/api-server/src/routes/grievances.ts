@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, grievancesTable, membersTable, localSettingsTable, grievanceNotesTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { requirePermission } from "../lib/permissions";
+import { requirePermission, requireSteward } from "../lib/permissions";
 import { logAudit } from "../lib/auditLog";
 import {
   sendGrievanceFiledNotification,
@@ -169,7 +169,7 @@ router.post("/", requirePermission("grievances.file"), asyncHandler(async (req, 
   res.status(201).json(formatGrievance(grievance, memberName));
 }));
 
-router.get("/stats/summary", asyncHandler(async (_req, res) => {
+router.get("/stats/summary", requireSteward, asyncHandler(async (_req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   const [row] = await db
