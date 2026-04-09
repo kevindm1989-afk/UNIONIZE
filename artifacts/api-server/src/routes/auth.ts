@@ -5,8 +5,25 @@ import { eq, and } from "drizzle-orm";
 import { ALL_PERMISSIONS, loadUserPermissions } from "../lib/seedAdmin";
 import { sendAccessRequestNotification } from "../lib/email";
 import { asyncHandler } from "../lib/asyncHandler";
+import { rateLimit } from "express-rate-limit";
 
 const router: IRouter = Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts. Please try again in 15 minutes.", code: "RATE_LIMITED" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const accessRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 function validatePasswordStrength(password: string): string | null {
   if (password.length < 12) return "Password must be at least 12 characters.";
@@ -31,7 +48,7 @@ declare module "express-session" {
 /**
  * POST /auth/login
  */
-router.post("/auth/login", async (req: Request, res: Response) => {
+router.post("/auth/login", loginLimiter, async (req: Request, res: Response) => {
   const { username, password } = req.body ?? {};
 
   if (!username || !password) {
@@ -121,7 +138,7 @@ router.get("/auth/me", (req: Request, res: Response) => {
 /**
  * POST /auth/request-access
  */
-router.post("/auth/request-access", async (req: Request, res: Response) => {
+router.post("/auth/request-access", accessRequestLimiter, async (req: Request, res: Response) => {
   const { name, username, reason } = req.body ?? {};
 
   if (!name || !username) {
