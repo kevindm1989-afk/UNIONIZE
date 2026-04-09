@@ -345,7 +345,7 @@ router.patch("/:id/reject", asyncHandler(async (req: Request, res: Response) => 
   }
 }));
 
-// ─── DELETE /api/access-requests/:id — admin only, pending only ───────────────
+// ─── DELETE /api/access-requests/:id — admin only ────────────────────────────
 router.delete("/:id", asyncHandler(async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   const id = parseInt(req.params.id as string, 10);
@@ -353,7 +353,6 @@ router.delete("/:id", asyncHandler(async (req: Request, res: Response) => {
 
   const [request] = await db.select().from(accessRequestsTable).where(eq(accessRequestsTable.id, id)).limit(1);
   if (!request) { res.status(404).json({ error: "Not found", code: "NOT_FOUND" }); return; }
-  if (request.status !== "pending") { res.status(400).json({ error: "Only pending requests can be deleted", code: "INVALID_STATUS" }); return; }
 
   await db.delete(accessRequestsTable).where(eq(accessRequestsTable.id, id));
   res.json({ ok: true });

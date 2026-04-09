@@ -594,6 +594,21 @@ export default function Admin() {
                       </p>
                     )}
 
+                    {(r.status === "approved" || r.status === "rejected") && (
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 rounded-xl gap-1.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => dismissMutation.mutate(r.id)}
+                          disabled={dismissMutation.isPending}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+
                     {r.status === "pending" && (
                       <div className="flex gap-2">
                         <Button
