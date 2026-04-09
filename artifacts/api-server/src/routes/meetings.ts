@@ -1,4 +1,5 @@
 import { Router, type Request } from "express";
+import { z } from "zod/v4";
 import { db, meetingsTable } from "@workspace/db";
 import { eq, desc, gte } from "drizzle-orm";
 import { requirePermission } from "../lib/permissions";
@@ -6,6 +7,20 @@ import { sendPushToAll } from "./push";
 import { asyncHandler } from "../lib/asyncHandler";
 
 const router = Router();
+
+// ─── Schemas ─────────────────────────────────────────────────────────────────
+
+const createMeetingSchema = z.object({
+  title: z.string().min(1).max(200),
+  type: z.enum(["executive", "general", "stewards"]),
+  date: z.string().datetime(),
+  location: z.string().min(1).max(500),
+  agenda: z.string().max(10000).nullable().optional(),
+  minutes: z.string().max(50000).nullable().optional(),
+  attendees: z.array(z.number().int().positive()).default([]),
+});
+
+const updateMeetingSchema = createMeetingSchema.partial();
 
 function formatMeeting(m: typeof meetingsTable.$inferSelect) {
   return {
@@ -44,28 +59,32 @@ router.get("/", asyncHandler(async (req: Request, res) => {
 }));
 
 router.post("/", requirePermission("meetings.manage"), asyncHandler(async (req: Request, res) => {
-  const { title, type, date, location, agenda } = req.body;
-  if (!title || !date) {
-    res.status(400).json({ error: "title and date are required" });
-    return;
+  let body: z.infer<typeof createMeetingSchema>;
+  try {
+    body = createMeetingSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
   }
 
   const [meeting] = await db
     .insert(meetingsTable)
     .values({
-      title,
-      type: type ?? "general",
-      date: new Date(date),
-      location: location ?? null,
-      agenda: agenda ?? null,
+      title: body.title,
+      type: body.type,
+      date: new Date(body.date),
+      location: body.location ?? null,
+      agenda: body.agenda ?? null,
       createdBy: req.session?.userId ?? null,
     })
     .returning();
 
   // Notify stewards of new meeting
   sendPushToAll({
-    title: `Meeting Scheduled: ${title}`,
-    body: `${new Date(date).toLocaleDateString()} — ${location ?? "Location TBD"}`,
+    title: `Meeting Scheduled: ${body.title}`,
+    body: `${new Date(body.date).toLocaleDateString()} — ${body.location ?? "Location TBD"}`,
     tag: `meeting-${meeting.id}`,
   }).catch(() => {});
 
@@ -84,17 +103,24 @@ router.patch("/:id", requirePermission("meetings.manage"), asyncHandler(async (r
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, type, date, location, agenda, minutes, minutesPublished, attendees } = req.body;
+  let body: z.infer<typeof updateMeetingSchema>;
+  try {
+    body = updateMeetingSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
+  }
   const updates: Record<string, unknown> = { updatedAt: new Date() };
 
-  if (title !== undefined) updates.title = title;
-  if (type !== undefined) updates.type = type;
-  if (date !== undefined) updates.date = new Date(date);
-  if (location !== undefined) updates.location = location;
-  if (agenda !== undefined) updates.agenda = agenda;
-  if (minutes !== undefined) updates.minutes = minutes;
-  if (minutesPublished !== undefined) updates.minutesPublished = minutesPublished;
-  if (attendees !== undefined) updates.attendees = attendees;
+  if (body.title !== undefined) updates.title = body.title;
+  if (body.type !== undefined) updates.type = body.type;
+  if (body.date !== undefined) updates.date = new Date(body.date);
+  if (body.location !== undefined) updates.location = body.location;
+  if (body.agenda !== undefined) updates.agenda = body.agenda;
+  if (body.minutes !== undefined) updates.minutes = body.minutes;
+  if (body.attendees !== undefined) updates.attendees = body.attendees;
 
   const [meeting] = await db
     .update(meetingsTable)

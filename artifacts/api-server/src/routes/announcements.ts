@@ -1,17 +1,24 @@
 import { Router } from "express";
+import { z } from "zod/v4";
 import { db, announcementsTable } from "@workspace/db";
 import { requirePermission } from "../lib/permissions";
 import { eq, desc } from "drizzle-orm";
 import { notifyUrgentBulletin } from "../lib/notifications";
 import {
   CreateAnnouncementBody,
-  UpdateAnnouncementBody,
   ListAnnouncementsQueryParams,
   GetAnnouncementParams,
   UpdateAnnouncementParams,
   DeleteAnnouncementParams,
 } from "@workspace/api-zod";
 import { asyncHandler } from "../lib/asyncHandler";
+
+const updateAnnouncementSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  content: z.string().min(1).optional(),
+  category: z.enum(["general", "urgent", "contract", "meeting", "action"]).optional(),
+  isUrgent: z.boolean().optional(),
+});
 
 const router = Router();
 
@@ -84,9 +91,9 @@ router.patch("/:id", requirePermission("bulletins.manage"), asyncHandler(async (
     return;
   }
 
-  const bodyParsed = UpdateAnnouncementBody.safeParse(req.body);
+  const bodyParsed = updateAnnouncementSchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    res.status(400).json({ error: "Invalid body" });
+    res.status(422).json({ error: bodyParsed.error.message, code: "VALIDATION_ERROR" });
     return;
   }
 

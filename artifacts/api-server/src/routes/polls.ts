@@ -1,10 +1,39 @@
 import { Router } from "express";
+import { z } from "zod/v4";
 import { db, pollsTable, pollResponsesTable, usersTable } from "@workspace/db";
 import { eq, and, lte, gte, sql } from "drizzle-orm";
+import { requireAdmin } from "../lib/permissions";
 import { sendPushToAll } from "./push";
 import { asyncHandler } from "../lib/asyncHandler";
 
 const router = Router();
+
+// ─── Schemas ─────────────────────────────────────────────────────────────────
+
+const createPollSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).nullable().optional(),
+  pollType: z.enum(["yes_no", "multiple_choice"]),
+  options: z.array(z.string().min(1)).nullable().optional(),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime(),
+  targetRole: z.enum(["all", "member", "steward"]).default("all"),
+}).refine(
+  (data) => data.pollType !== "multiple_choice" || (data.options && data.options.length >= 2),
+  { message: "multiple_choice polls require at least 2 options", path: ["options"] }
+);
+
+const updatePollSchema = z.object({
+  isActive: z.boolean().optional(),
+  endsAt: z.string().datetime().optional(),
+  title: z.string().min(1).max(200).optional(),
+});
+
+const respondPollSchema = z.object({
+  response: z.string().min(1).max(500),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function fmt(p: typeof pollsTable.$inferSelect) {
   return {
@@ -61,19 +90,24 @@ router.post("/", asyncHandler(async (req, res) => {
   if (req.session?.role !== "admin" && req.session?.role !== "chair") {
     res.status(403).json({ error: "Admin only", code: "FORBIDDEN" }); return;
   }
-  const body = req.body as Record<string, unknown>;
-  if (!body.title || !body.endsAt) {
-    res.status(400).json({ error: "title and endsAt required", code: "INVALID_BODY" }); return;
+  let body: z.infer<typeof createPollSchema>;
+  try {
+    body = createPollSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
   }
   const [p] = await db.insert(pollsTable).values({
-    title: body.title as string,
-    description: (body.description as string) ?? null,
-    pollType: (body.pollType as "yes_no" | "multiple_choice") ?? "yes_no",
-    options: (body.options as string[]) ?? [],
-    startsAt: body.startsAt ? new Date(body.startsAt as string) : new Date(),
-    endsAt: new Date(body.endsAt as string),
+    title: body.title,
+    description: body.description ?? null,
+    pollType: body.pollType,
+    options: body.options ?? [],
+    startsAt: body.startsAt ? new Date(body.startsAt) : new Date(),
+    endsAt: new Date(body.endsAt),
     createdBy: req.session?.userId ?? null,
-    targetRole: (body.targetRole as "all" | "member" | "steward") ?? "all",
+    targetRole: body.targetRole,
   }).returning();
 
   // Push notification to relevant users
@@ -101,10 +135,17 @@ router.post("/:id/respond", asyncHandler(async (req, res) => {
   const [existing] = await db.select().from(pollResponsesTable).where(and(eq(pollResponsesTable.pollId, pollId), eq(pollResponsesTable.userId, userId)));
   if (existing) { res.status(409).json({ error: "Already voted", code: "ALREADY_VOTED" }); return; }
 
-  const { response } = req.body as { response: string };
-  if (!response) { res.status(400).json({ error: "response required", code: "INVALID_BODY" }); return; }
+  let body: z.infer<typeof respondPollSchema>;
+  try {
+    body = respondPollSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
+  }
 
-  await db.insert(pollResponsesTable).values({ pollId, userId, response });
+  await db.insert(pollResponsesTable).values({ pollId, userId, response: body.response });
   res.status(201).json({ ok: true });
 }));
 
@@ -134,13 +175,28 @@ router.patch("/:id", asyncHandler(async (req, res) => {
     res.status(403).json({ error: "Admin only", code: "FORBIDDEN" }); return;
   }
   const id = parseInt(req.params.id as string, 10);
-  const body = req.body as Record<string, unknown>;
+  let body: z.infer<typeof updatePollSchema>;
+  try {
+    body = updatePollSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
+  }
   const updates: Record<string, unknown> = {};
-  if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
-  if (body.endsAt) updates.endsAt = new Date(body.endsAt as string);
+  if (body.isActive !== undefined) updates.isActive = body.isActive;
+  if (body.endsAt) updates.endsAt = new Date(body.endsAt);
+  if (body.title !== undefined) updates.title = body.title;
   const [p] = await db.update(pollsTable).set(updates).where(eq(pollsTable.id, id)).returning();
   if (!p) { res.status(404).json({ error: "Not found", code: "NOT_FOUND" }); return; }
   res.json(fmt(p));
+}));
+
+router.delete("/:id", requireAdmin, asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string, 10);
+  await db.delete(pollsTable).where(eq(pollsTable.id, id));
+  res.json({ ok: true });
 }));
 
 export default router;

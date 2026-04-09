@@ -1,8 +1,22 @@
 import { Router } from "express";
+import { z } from "zod/v4";
 import { db, disciplineRecordsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { requireSteward } from "../lib/permissions";
 import { asyncHandler } from "../lib/asyncHandler";
+
+const createDisciplineSchema = z.object({
+  disciplineType: z.enum([
+    "verbal_warning", "written_warning",
+    "suspension_paid", "suspension_unpaid",
+    "termination", "other",
+  ]),
+  incidentDate: z.string().date(),
+  issuedDate: z.string().date(),
+  description: z.string().min(1).max(5000),
+  responseFiled: z.boolean().default(false),
+  grievanceId: z.number().int().positive().nullable().optional(),
+});
 
 const router = Router({ mergeParams: true });
 
@@ -35,18 +49,23 @@ router.get("/", asyncHandler(async (req, res) => {
 
 router.post("/", asyncHandler(async (req, res) => {
   const memberId = parseInt((req.params as Record<string, string>).memberId, 10);
-  const body = req.body as Record<string, unknown>;
-  if (!body.incidentDate || !body.issuedDate || !body.description) {
-    res.status(400).json({ error: "incidentDate, issuedDate, description required", code: "INVALID_BODY" }); return;
+  let body: z.infer<typeof createDisciplineSchema>;
+  try {
+    body = createDisciplineSchema.parse(req.body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(422).json({ error: err.message, code: "VALIDATION_ERROR" }); return;
+    }
+    throw err;
   }
   const [r] = await db.insert(disciplineRecordsTable).values({
     memberId,
-    disciplineType: (body.disciplineType as "verbal_warning" | "written_warning" | "suspension_paid" | "suspension_unpaid" | "termination" | "other") ?? "verbal_warning",
-    incidentDate: body.incidentDate as string,
-    issuedDate: body.issuedDate as string,
-    description: body.description as string,
-    responseFiled: Boolean(body.responseFiled),
-    grievanceId: body.grievanceId ? Number(body.grievanceId) : null,
+    disciplineType: body.disciplineType,
+    incidentDate: body.incidentDate,
+    issuedDate: body.issuedDate,
+    description: body.description,
+    responseFiled: body.responseFiled,
+    grievanceId: body.grievanceId ?? null,
     createdBy: req.session?.userId ?? null,
   }).returning();
   res.status(201).json(fmt(r));

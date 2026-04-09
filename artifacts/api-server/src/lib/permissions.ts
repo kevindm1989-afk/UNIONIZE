@@ -19,3 +19,12 @@ export function requireSteward(req: Request, res: Response, next: NextFunction) 
   }
   next();
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const role = req.session?.role;
+  if (role !== "admin" && role !== "chair") {
+    res.status(403).json({ error: "Admin access required", code: "FORBIDDEN" });
+    return;
+  }
+  next();
+}
