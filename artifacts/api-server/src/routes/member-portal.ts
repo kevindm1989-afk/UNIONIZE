@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, membersTable, grievancesTable, announcementsTable, usersTable, disciplineRecordsTable } from "@workspace/db";
 import { eq, desc, asc } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { ANTHROPIC_MODEL } from "../lib/anthropic/constants";
 import { z } from "zod/v4";
 import { asyncHandler } from "../lib/asyncHandler";
 // @ts-ignore — .txt imported via esbuild text loader
@@ -269,7 +270,7 @@ router.post("/ai/chat", requireMemberRole, async (req: Request, res: Response) =
 
   try {
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6",
+      model: ANTHROPIC_MODEL,
       max_tokens: 4096,
       system: MEMBER_AI_SYSTEM_PROMPT,
       messages: chatMessages,

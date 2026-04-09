@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { ANTHROPIC_MODEL } from "../../lib/anthropic/constants";
 import { SendAnthropicMessageBody } from "@workspace/api-zod";
 // @ts-ignore — .txt imported via esbuild text loader
 import cbaText from "../../data/cba.txt";
@@ -173,7 +174,7 @@ router.post("/conversations/:id/messages", async (req: Request, res: Response) =
     let fullResponse = "";
 
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6",
+      model: ANTHROPIC_MODEL,
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: chatMessages,
