@@ -15,6 +15,9 @@ primary_region = "ord"
   # RESEND_API_KEY — required for email delivery on Fly.io
   # VAPID_PUBLIC_KEY
   # VAPID_PRIVATE_KEY
+  # ALLOWED_ORIGINS — comma-separated list of allowed CORS origins
+  #   e.g. https://union-local-1285.fly.dev,https://custom.domain.com
+  #   Defaults to https://union-local-1285.fly.dev if not set
   # Optional — SMS disabled if missing:
   # TWILIO_ACCOUNT_SID
   # TWILIO_AUTH_TOKEN

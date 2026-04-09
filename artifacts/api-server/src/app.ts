@@ -47,7 +47,24 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : ["https://union-local-1285.fly.dev"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS policy`));
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const sessionSecret = process.env.SESSION_SECRET;
@@ -59,7 +76,7 @@ app.use(
     store: new PgStore({
       pool,
       tableName: "sessions",
-      createTableIfMissing: false,
+      createTableIfMissing: true,
     }),
     name: "union.sid",
     secret: sessionSecret,
