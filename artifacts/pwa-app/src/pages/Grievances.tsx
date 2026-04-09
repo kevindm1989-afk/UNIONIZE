@@ -139,12 +139,12 @@ export default function Grievances() {
                         <span className="flex items-center gap-1 font-medium bg-muted px-2 py-1 rounded">
                           {g.step === 5 ? "Arbitration" : `Step ${g.step}`}
                         </span>
-                        {g.isOverdue && (
+                        {(g as any).isOverdue && (
                           <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm border bg-red-50 text-red-700 border-red-200">
                             Overdue
                           </span>
                         )}
-                        {g.accommodationRequest && (
+                        {(g as any).accommodationRequest && (
                           <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm border bg-blue-50 text-blue-700 border-blue-200">
                             ADA
                           </span>
@@ -157,7 +157,7 @@ export default function Grievances() {
                           Filed {format(new Date(g.filedDate), 'MMM d')}
                         </span>
                         {g.dueDate && (
-                          <span className={g.isOverdue ? "text-red-600 font-medium" : ""}>
+                          <span className={(g as any).isOverdue ? "text-red-600 font-medium" : ""}>
                             Due {format(new Date(g.dueDate), 'MMM d')}
                           </span>
                         )}

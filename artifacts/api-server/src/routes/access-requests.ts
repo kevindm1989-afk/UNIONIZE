@@ -211,7 +211,7 @@ router.get("/", async (req: Request, res: Response) => {
 // ─── GET /api/access-requests/:id — admin only ───────────────────────────────
 router.get("/:id", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID", code: "INVALID_ID" }); return; }
 
   const [request] = await db.select().from(accessRequestsTable).where(eq(accessRequestsTable.id, id)).limit(1);
@@ -223,7 +223,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 // ─── PATCH /api/access-requests/:id/approve — admin only ─────────────────────
 router.patch("/:id/approve", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID", code: "INVALID_ID" }); return; }
 
   // approvedRole can be specified; defaults to requestedRole or "member"
@@ -323,7 +323,7 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
 // ─── PATCH /api/access-requests/:id/reject — admin only ──────────────────────
 router.patch("/:id/reject", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID", code: "INVALID_ID" }); return; }
 
   const { rejectionReason } = req.body ?? {};
@@ -356,7 +356,7 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
 // ─── DELETE /api/access-requests/:id — admin only, pending only ───────────────
 router.delete("/:id", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID", code: "INVALID_ID" }); return; }
 
   const [request] = await db.select().from(accessRequestsTable).where(eq(accessRequestsTable.id, id)).limit(1);

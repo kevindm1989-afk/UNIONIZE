@@ -27,7 +27,7 @@ async function getResendClient(): Promise<{ client: Resend; from: string } | nul
       },
     )
       .then((r) => r.json())
-      .then((d) => d.items?.[0]);
+      .then((d: any) => d.items?.[0]);
 
     if (!data?.settings?.api_key) {
       logger.warn("Resend not connected — skipping email");

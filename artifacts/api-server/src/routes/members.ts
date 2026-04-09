@@ -68,7 +68,7 @@ router.post("/", requirePermission("members.edit"), async (req, res) => {
       classification: d.classification ?? null,
       phone: d.phone ?? null,
       email: d.email ?? null,
-      joinDate: d.joinDate ?? null,
+      joinDate: d.joinDate as string | null ?? null,
       isActive: d.isActive ?? true,
       notes: d.notes ?? null,
       seniorityDate: (body.seniorityDate as string) ?? null,
@@ -208,7 +208,7 @@ router.delete("/:id", requirePermission("members.edit"), async (req, res) => {
 
 // ─── Deactivate member ────────────────────────────────────────────────────────
 router.patch("/:id/deactivate", requirePermission("members.edit"), async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, id)).limit(1);
@@ -240,7 +240,7 @@ router.patch("/:id/deactivate", requirePermission("members.edit"), async (req, r
 
 // ─── Reactivate member ────────────────────────────────────────────────────────
 router.patch("/:id/reactivate", requirePermission("members.edit"), async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, id)).limit(1);
@@ -319,7 +319,7 @@ function formatGrievanceWithMember(
 // ─── Member Files ──────────────────────────────────────────────────────────
 
 router.get("/:id/files", async (req, res) => {
-  const memberId = parseInt(req.params.id, 10);
+  const memberId = parseInt(req.params.id as string, 10);
   if (isNaN(memberId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [member] = await db.select({ id: membersTable.id }).from(membersTable).where(eq(membersTable.id, memberId));
@@ -349,7 +349,7 @@ router.post(
   requirePermission("members.edit"),
   upload.single("file"),
   async (req, res) => {
-    const memberId = parseInt(req.params.id, 10);
+    const memberId = parseInt(req.params.id as string, 10);
     if (isNaN(memberId)) { res.status(400).json({ error: "Invalid ID" }); return; }
     if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
 
@@ -397,8 +397,8 @@ router.post(
 );
 
 router.delete("/:id/files/:fileId", requirePermission("members.edit"), async (req, res) => {
-  const memberId = parseInt(req.params.id, 10);
-  const fileId = parseInt(req.params.fileId, 10);
+  const memberId = parseInt(req.params.id as string, 10);
+  const fileId = parseInt(req.params.fileId as string, 10);
   if (isNaN(memberId) || isNaN(fileId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [file] = await db

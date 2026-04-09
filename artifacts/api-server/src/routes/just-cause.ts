@@ -25,7 +25,7 @@ function fmt(a: typeof justCauseAssessmentsTable.$inferSelect) {
 }
 
 router.get("/", async (req, res) => {
-  const grievanceId = parseInt(req.params.grievanceId, 10);
+  const grievanceId = parseInt((req.params as Record<string, string>).grievanceId, 10);
   const [assessment] = await db
     .select()
     .from(justCauseAssessmentsTable)
@@ -34,7 +34,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const grievanceId = parseInt(req.params.grievanceId, 10);
+  const grievanceId = parseInt((req.params as Record<string, string>).grievanceId, 10);
   const userId = req.session?.userId;
   if (!userId) { res.status(401).json({ error: "Unauthenticated", code: "UNAUTHENTICATED" }); return; }
 

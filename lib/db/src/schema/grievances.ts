@@ -11,7 +11,7 @@ export const grievancesTable = pgTable("grievances", {
   contractArticle: text("contract_article"),
   step: integer("step").notNull().default(1),
   status: text("status", {
-    enum: ["open", "pending_response", "pending_hearing", "resolved", "withdrawn"],
+    enum: ["open", "pending_response", "pending_hearing", "resolved", "withdrawn", "member_requested"],
   }).notNull().default("open"),
   filedDate: date("filed_date").notNull(),
   dueDate: date("due_date"),

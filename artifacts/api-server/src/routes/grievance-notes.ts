@@ -6,7 +6,7 @@ import { requirePermission } from "../lib/permissions";
 const router = Router({ mergeParams: true });
 
 router.get("/", async (req, res) => {
-  const grievanceId = Number(req.params.grievanceId);
+  const grievanceId = Number((req.params as Record<string, string>).grievanceId);
   if (isNaN(grievanceId)) {
     res.status(400).json({ error: "Invalid grievance ID" });
     return;
@@ -32,7 +32,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", requirePermission("grievances.file"), async (req, res) => {
-  const grievanceId = Number(req.params.grievanceId);
+  const grievanceId = Number((req.params as Record<string, string>).grievanceId);
   if (isNaN(grievanceId)) {
     res.status(400).json({ error: "Invalid grievance ID" });
     return;

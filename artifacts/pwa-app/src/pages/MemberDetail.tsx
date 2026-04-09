@@ -28,7 +28,7 @@ import {
   Phone, Mail, Building, Briefcase, Calendar,
   FileText, ChevronLeft, ArrowRight, Pencil, Trash2, Loader2,
   Paperclip, Download, Upload, X, AlertOctagon, ClipboardCheck, Plus,
-  UserX, UserCheck, ShieldAlert,
+  UserX, UserCheck, ShieldAlert, KeyRound, ShieldCheck, Eye, EyeOff, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -307,6 +307,67 @@ export default function MemberDetail() {
     onError: () => toast({ title: "Error", description: "Could not reactivate member.", variant: "destructive" }),
   });
 
+  // ── Linked account ──────────────────────────────────────────────────────────
+  interface LinkedUser {
+    id: number;
+    username: string;
+    displayName: string;
+    role: string;
+    isActive: boolean;
+    linkedMemberId: number | null;
+    lastLoginAt: string | null;
+    createdAt: string;
+  }
+
+  const [roleChangeOpen, setRoleChangeOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState("");
+  const [resetPassOpen, setResetPassOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [resetResult, setResetResult] = useState<{ username: string; password: string } | null>(null);
+
+  const { data: linkedUsers = [], refetch: refetchLinkedUser } = useQuery<LinkedUser[]>({
+    queryKey: ["/auth/users/by-member", id],
+    queryFn: () => fetchJson(`/api/auth/users?memberId=${id}`),
+    enabled: isAdmin && !!id,
+  });
+  const linkedUser = linkedUsers[0] ?? null;
+
+  const changeRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: string }) =>
+      fetchJson(`/api/auth/users/${userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      }),
+    onSuccess: () => {
+      refetchLinkedUser();
+      setRoleChangeOpen(false);
+      toast({ title: "Role updated", description: `Account role changed to ${pendingRole}.` });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ userId, password }: { userId: number; password: string }) =>
+      fetchJson(`/api/auth/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      }),
+    onSuccess: () => {
+      if (linkedUser) setResetResult({ username: linkedUser.username, password: newPassword });
+      setResetPassOpen(false);
+      setNewPassword("");
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast({ title: "Copied to clipboard" });
+  };
+
   // Populate form fields whenever member loads or edit sheet opens
   useEffect(() => {
     if (member && editOpen) {
@@ -318,11 +379,11 @@ export default function MemberDetail() {
       setEmail(member.email ?? "");
       setJoinDate(member.joinDate ?? "");
       setNotes(member.notes ?? "");
-      setSeniorityDate(member.seniorityDate ? new Date(member.seniorityDate).toISOString().split("T")[0] : "");
-      setDuesStatus(member.duesStatus ?? "current");
-      setDuesLastPaid(member.duesLastPaid ? new Date(member.duesLastPaid).toISOString().split("T")[0] : "");
-      setShift(member.shift ?? "");
-      setClassificationDate(member.classificationDate ? new Date(member.classificationDate).toISOString().split("T")[0] : "");
+      setSeniorityDate((member as any).seniorityDate ? new Date((member as any).seniorityDate).toISOString().split("T")[0] : "");
+      setDuesStatus((member as any).duesStatus ?? "current");
+      setDuesLastPaid((member as any).duesLastPaid ? new Date((member as any).duesLastPaid).toISOString().split("T")[0] : "");
+      setShift((member as any).shift ?? "");
+      setClassificationDate((member as any).classificationDate ? new Date((member as any).classificationDate).toISOString().split("T")[0] : "");
       setSmsEnabled((member as any).smsEnabled ?? false);
       setEmailEnabled((member as any).emailEnabled ?? true);
       setPushEnabled((member as any).pushEnabled ?? true);
@@ -477,33 +538,33 @@ export default function MemberDetail() {
                 "Join Date",
                 format(new Date(member.joinDate), "MMM d, yyyy")
               )}
-            {member.seniorityDate &&
+            {(member as any).seniorityDate &&
               field(
                 "Seniority Date",
-                format(new Date(member.seniorityDate), "MMM d, yyyy")
+                format(new Date((member as any).seniorityDate), "MMM d, yyyy")
               )}
-            {member.classificationDate &&
+            {(member as any).classificationDate &&
               field(
                 "Classification Date",
-                format(new Date(member.classificationDate), "MMM d, yyyy")
+                format(new Date((member as any).classificationDate), "MMM d, yyyy")
               )}
-            {member.shift && field("Shift", member.shift)}
+            {(member as any).shift && field("Shift", (member as any).shift)}
             {field(
               "Dues Status",
               <span className={
-                member.duesStatus === "delinquent"
+                (member as any).duesStatus === "delinquent"
                   ? "font-semibold text-red-600"
-                  : member.duesStatus === "suspended"
+                  : (member as any).duesStatus === "suspended"
                   ? "font-semibold text-amber-600"
                   : "font-semibold text-green-600"
               }>
-                {member.duesStatus ? member.duesStatus.charAt(0).toUpperCase() + member.duesStatus.slice(1) : "Current"}
+                {(member as any).duesStatus ? (member as any).duesStatus.charAt(0).toUpperCase() + (member as any).duesStatus.slice(1) : "Current"}
               </span>
             )}
-            {member.duesLastPaid &&
+            {(member as any).duesLastPaid &&
               field(
                 "Dues Last Paid",
-                format(new Date(member.duesLastPaid), "MMM d, yyyy")
+                format(new Date((member as any).duesLastPaid), "MMM d, yyyy")
               )}
           </div>
         ) : null}
@@ -779,7 +840,7 @@ export default function MemberDetail() {
 
           <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
             {ONBOARDING_ITEMS.map((item) => {
-              const checked = Boolean(onboarding && (onboarding as Record<string, unknown>)[item.key]);
+              const checked = Boolean(onboarding && (onboarding as unknown as Record<string, unknown>)[item.key]);
               return (
                 <div
                   key={item.key}
@@ -789,7 +850,7 @@ export default function MemberDetail() {
                     updateOnboardingMutation.mutate({ [item.key]: !checked });
                   }}
                 >
-                  <Checkbox checked={checked} readOnly className="mt-0.5 flex-shrink-0" />
+                  <Checkbox checked={checked} className="mt-0.5 flex-shrink-0" />
                   <div>
                     <p className={cn("text-sm font-semibold", checked ? "text-muted-foreground line-through" : "text-foreground")}>{item.label}</p>
                     <p className="text-xs text-muted-foreground">{item.description}</p>
@@ -807,6 +868,81 @@ export default function MemberDetail() {
               <ShieldAlert className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Account Management</p>
             </div>
+
+            {/* Linked Account Card (admin only) */}
+            {isAdmin && (
+              <div className="bg-card border border-border rounded-xl overflow-hidden mb-2">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Portal Account</p>
+                </div>
+                {!linkedUser ? (
+                  <div className="px-4 py-4 text-center">
+                    <p className="text-sm text-muted-foreground">No portal account linked</p>
+                    <p className="text-xs text-muted-foreground/60 mt-0.5">Approve an access request to create one</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Username</p>
+                        <p className="font-mono font-bold text-sm">@{linkedUser.username}</p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(linkedUser.username)}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Role</p>
+                        <span className={cn(
+                          "text-xs font-bold px-2 py-0.5 rounded-md mt-0.5 inline-block",
+                          linkedUser.role === "admin" ? "bg-red-100 text-red-700" :
+                          linkedUser.role === "chair" ? "bg-orange-100 text-orange-700" :
+                          linkedUser.role === "steward" ? "bg-blue-100 text-blue-700" :
+                          linkedUser.role === "co_chair" ? "bg-violet-100 text-violet-700" :
+                          "bg-muted text-muted-foreground"
+                        )}>
+                          {linkedUser.role === "co_chair" ? "Co-Chair" : linkedUser.role.charAt(0).toUpperCase() + linkedUser.role.slice(1)}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg text-xs font-bold gap-1"
+                        onClick={() => { setPendingRole(linkedUser.role); setRoleChangeOpen(true); }}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Status</p>
+                        <span className={cn("text-xs font-bold mt-0.5 inline-block", linkedUser.isActive ? "text-green-600" : "text-red-600")}>
+                          {linkedUser.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      {linkedUser.lastLoginAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Last login {format(new Date(linkedUser.lastLoginAt), "MMM d")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="px-4 py-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-9 rounded-xl gap-2 text-xs font-bold"
+                        onClick={() => { setNewPassword(""); setShowNewPass(false); setResetPassOpen(true); }}
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        Reset Password
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Deactivate / Reactivate */}
             <AlertDialog>
@@ -904,6 +1040,134 @@ export default function MemberDetail() {
           </div>
         )}
       </div>
+
+      {/* Role change sheet */}
+      <Sheet open={roleChangeOpen} onOpenChange={setRoleChangeOpen}>
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+          <SheetHeader className="mb-5">
+            <SheetTitle className="text-lg font-extrabold tracking-tight">Change Account Role</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-3 pb-8">
+            <p className="text-sm text-muted-foreground">
+              Changing role for <span className="font-semibold text-foreground">@{linkedUser?.username}</span>.
+              This takes effect immediately on next login.
+            </p>
+            {(["member", "steward", "co_chair", "chair", "admin"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setPendingRole(r)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold transition-colors text-left",
+                  pendingRole === r
+                    ? "border-primary bg-primary/5 text-foreground"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className={cn(
+                  "w-2 h-2 rounded-full flex-shrink-0",
+                  r === "admin" ? "bg-red-500" :
+                  r === "chair" ? "bg-orange-500" :
+                  r === "co_chair" ? "bg-violet-500" :
+                  r === "steward" ? "bg-blue-500" : "bg-muted-foreground"
+                )} />
+                {r === "co_chair" ? "Co-Chair" : r.charAt(0).toUpperCase() + r.slice(1)}
+                {linkedUser?.role === r && (
+                  <span className="ml-auto text-[10px] font-bold text-muted-foreground uppercase">Current</span>
+                )}
+              </button>
+            ))}
+            <Button
+              className="w-full h-11 rounded-xl font-bold mt-2"
+              disabled={!pendingRole || pendingRole === linkedUser?.role || changeRoleMutation.isPending}
+              onClick={() => {
+                if (linkedUser && pendingRole) {
+                  changeRoleMutation.mutate({ userId: linkedUser.id, role: pendingRole });
+                }
+              }}
+            >
+              {changeRoleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Role Change"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Password reset dialog */}
+      <Sheet open={resetPassOpen} onOpenChange={(o) => { if (!resetPasswordMutation.isPending) setResetPassOpen(o); }}>
+        <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+          <SheetHeader className="mb-5">
+            <SheetTitle className="text-lg font-extrabold tracking-tight">Reset Password</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 pb-8">
+            <p className="text-sm text-muted-foreground">
+              Set a new temporary password for <span className="font-semibold text-foreground">@{linkedUser?.username}</span>.
+              Share it securely — they should change it after logging in.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New Password</label>
+              <div className="relative">
+                <Input
+                  type={showNewPass ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="h-12 rounded-xl pr-12"
+                  autoComplete="new-password"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={() => setShowNewPass((v) => !v)}
+                >
+                  {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+            <Button
+              className="w-full h-11 rounded-xl font-bold"
+              disabled={newPassword.length < 8 || resetPasswordMutation.isPending}
+              onClick={() => {
+                if (linkedUser) resetPasswordMutation.mutate({ userId: linkedUser.id, password: newPassword });
+              }}
+            >
+              {resetPasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set New Password"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Reset result overlay */}
+      {resetResult && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setResetResult(null)} />
+          <div className="relative z-10 bg-card border border-border rounded-2xl p-5 w-full max-w-[400px] shadow-2xl space-y-4">
+            <h3 className="font-extrabold text-base tracking-tight">Password Reset</h3>
+            <p className="text-sm text-muted-foreground">Share these credentials with the member. They should update their password after logging in.</p>
+            <div className="space-y-3">
+              <div className="bg-muted rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Username</p>
+                  <p className="font-mono font-bold text-sm text-foreground mt-0.5">{resetResult.username}</p>
+                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => copyToClipboard(resetResult.username)}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="bg-muted rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">New Password</p>
+                  <p className="font-mono font-bold text-sm text-foreground mt-0.5">{resetResult.password}</p>
+                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => copyToClipboard(resetResult.password)}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            <Button className="w-full h-11 rounded-xl font-bold" onClick={() => setResetResult(null)}>Done</Button>
+          </div>
+        </div>
+      )}
 
       {/* Edit sheet */}
       <Sheet open={editOpen} onOpenChange={(o) => { if (!saving) setEditOpen(o); }}>

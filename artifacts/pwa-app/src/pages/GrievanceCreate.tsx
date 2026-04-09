@@ -117,7 +117,7 @@ export default function GrievanceCreate() {
         dueDate: values.dueDate || null,
         notes: values.notes || null,
         accommodationRequest: values.accommodationRequest,
-      },
+      } as any,
     });
   };
 

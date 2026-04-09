@@ -76,7 +76,7 @@ router.post("/", requirePermission("documents.upload"), async (req: Request, res
 });
 
 router.get("/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [doc] = await db.select().from(documentsTable).where(eq(documentsTable.id, id));
@@ -85,7 +85,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", requirePermission("documents.upload"), async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const { title, category, description, isCurrent, effectiveDate, expirationDate, notes } = req.body;
@@ -104,7 +104,7 @@ router.patch("/:id", requirePermission("documents.upload"), async (req, res) => 
 });
 
 router.delete("/:id", requirePermission("documents.upload"), async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(documentsTable).where(eq(documentsTable.id, id));
   res.status(204).end();

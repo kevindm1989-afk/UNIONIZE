@@ -74,7 +74,7 @@ router.post("/", requirePermission("meetings.manage"), async (req: Request, res)
 });
 
 router.get("/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [meeting] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id));
   if (!meeting) { res.status(404).json({ error: "Not found" }); return; }
@@ -82,7 +82,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", requirePermission("meetings.manage"), async (req: Request, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const { title, type, date, location, agenda, minutes, minutesPublished, attendees } = req.body;
@@ -108,7 +108,7 @@ router.patch("/:id", requirePermission("meetings.manage"), async (req: Request, 
 });
 
 router.delete("/:id", requirePermission("meetings.manage"), async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(meetingsTable).where(eq(meetingsTable.id, id));
   res.status(204).end();

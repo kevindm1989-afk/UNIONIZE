@@ -209,7 +209,7 @@ export default function GrievanceDetail() {
       setStatus(grievance.status);
       setStep(String(grievance.step));
       setDueDate(grievance.dueDate || "");
-      setAccommodationRequest(grievance.accommodationRequest ?? false);
+      setAccommodationRequest((grievance as any).accommodationRequest ?? false);
     }
   }, [grievance]);
 
@@ -317,7 +317,7 @@ export default function GrievanceDetail() {
   if (!grievance) return null;
 
   const jcScore = justCause
-    ? JUST_CAUSE_FIELDS.filter((f) => Boolean((justCause as Record<string, unknown>)[f.key])).length
+    ? JUST_CAUSE_FIELDS.filter((f) => Boolean((justCause as unknown as Record<string, unknown>)[f.key])).length
     : 0;
 
   return (
@@ -333,7 +333,7 @@ export default function GrievanceDetail() {
               <span className={cn("text-[9px] uppercase font-bold px-2 py-0.5 rounded border", statusColors[grievance.status])}>
                 {grievance.status.replace(/_/g, " ")}
               </span>
-              {grievance.isOverdue && (
+              {(grievance as any).isOverdue && (
                 <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">
                   Overdue
                 </span>
@@ -438,7 +438,7 @@ export default function GrievanceDetail() {
               handleUpdate("accommodationRequest", next);
             }}
           >
-            <Checkbox checked={accommodationRequest} readOnly />
+            <Checkbox checked={accommodationRequest} />
             <div>
               <p className="text-sm font-semibold">ADA / Accommodation Request</p>
               <p className="text-xs text-muted-foreground">Member has a disability accommodation involved</p>
@@ -582,14 +582,14 @@ export default function GrievanceDetail() {
               )}
               <div className="space-y-2.5">
                 {JUST_CAUSE_FIELDS.map((f) => {
-                  const checked = Boolean(justCause && (justCause as Record<string, unknown>)[f.key]);
+                  const checked = Boolean(justCause && (justCause as unknown as Record<string, unknown>)[f.key]);
                   return (
                     <div
                       key={f.key}
                       className="flex items-start gap-3 p-3 rounded-xl bg-background border border-border cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => toggleJustCause(f.key)}
                     >
-                      <Checkbox checked={checked} readOnly className="mt-0.5 flex-shrink-0" />
+                      <Checkbox checked={checked} className="mt-0.5 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-semibold">{f.label}</p>
                         <p className="text-xs text-muted-foreground">{f.description}</p>

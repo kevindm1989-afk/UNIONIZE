@@ -55,7 +55,7 @@ router.post("/conversations", async (req: Request, res: Response) => {
 });
 
 router.get("/conversations/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;
@@ -83,7 +83,7 @@ router.get("/conversations/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/conversations/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;
@@ -107,7 +107,7 @@ router.delete("/conversations/:id", async (req: Request, res: Response) => {
 });
 
 router.get("/conversations/:id/messages", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;
@@ -126,7 +126,7 @@ router.get("/conversations/:id/messages", async (req: Request, res: Response) =>
 });
 
 router.post("/conversations/:id/messages", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;

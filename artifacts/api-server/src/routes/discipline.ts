@@ -23,7 +23,7 @@ function fmt(r: typeof disciplineRecordsTable.$inferSelect) {
 }
 
 router.get("/", async (req, res) => {
-  const memberId = parseInt(req.params.memberId, 10);
+  const memberId = parseInt((req.params as Record<string, string>).memberId, 10);
   const records = await db
     .select()
     .from(disciplineRecordsTable)
@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const memberId = parseInt(req.params.memberId, 10);
+  const memberId = parseInt((req.params as Record<string, string>).memberId, 10);
   const body = req.body as Record<string, unknown>;
   if (!body.incidentDate || !body.issuedDate || !body.description) {
     res.status(400).json({ error: "incidentDate, issuedDate, description required", code: "INVALID_BODY" }); return;
@@ -53,7 +53,7 @@ router.post("/", async (req, res) => {
 
 router.patch("/:recordId", async (req, res) => {
   const recordId = parseInt(req.params.recordId, 10);
-  const memberId = parseInt(req.params.memberId, 10);
+  const memberId = parseInt((req.params as Record<string, string>).memberId, 10);
   const body = req.body as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
   if (body.disciplineType !== undefined) updates.disciplineType = body.disciplineType;
@@ -69,7 +69,7 @@ router.patch("/:recordId", async (req, res) => {
 
 router.delete("/:recordId", async (req, res) => {
   const recordId = parseInt(req.params.recordId, 10);
-  const memberId = parseInt(req.params.memberId, 10);
+  const memberId = parseInt((req.params as Record<string, string>).memberId, 10);
   await db.delete(disciplineRecordsTable).where(and(eq(disciplineRecordsTable.id, recordId), eq(disciplineRecordsTable.memberId, memberId)));
   res.status(204).end();
 });

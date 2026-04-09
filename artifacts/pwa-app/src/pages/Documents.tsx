@@ -153,15 +153,15 @@ export default function Documents() {
       await createDocument.mutateAsync({
         data: {
           title: title.trim(),
-          category: uploadCategory as any,
-          description: description.trim() || null,
+          category: uploadCategory,
+          description: description.trim() || undefined,
           filename: result.filename,
           objectPath: result.objectPath,
           contentType: result.contentType,
           fileSize: formatFileSize(result.fileSize),
           isCurrent: true,
           effectiveDate: effectiveDate || null,
-        },
+        } as any,
       });
 
       setUploadProgress(100);
