@@ -49,13 +49,20 @@ app.use(
 );
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : ["https://union-local-1285.fly.dev"];
+  : [
+      "https://union-local-1285.fly.dev",
+      "https://unifor1285.replit.app",
+    ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
+      // Allow any Replit subdomain in development
+      if (origin.endsWith(".replit.app") || origin.endsWith(".replit.dev") || origin.endsWith(".repl.co")) {
+        return callback(null, true);
+      }
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {

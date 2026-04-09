@@ -5,7 +5,7 @@ import * as schema from "./schema";
 
 neonConfig.webSocketConstructor = ws;
 
-const connectionString = process.env.DATABASE_URL || process.env.PG_URL;
+const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.PG_URL;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL environment variable must be set.");
