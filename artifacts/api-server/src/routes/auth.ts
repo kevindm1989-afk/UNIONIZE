@@ -199,7 +199,7 @@ router.get("/auth/access-requests", asyncHandler(async (req: Request, res: Respo
 /**
  * POST /auth/access-requests/:id/approve — admin only: approve and create user account
  */
-router.post("/auth/access-requests/:id/approve", async (req: Request, res: Response) => {
+router.post("/auth/access-requests/:id/approve", asyncHandler(async (req: Request, res: Response) => {
   if (!["admin", "chair"].includes(req.session.role ?? "")) {
     res.status(403).json({ error: "Admin access required" });
     return;
@@ -242,7 +242,7 @@ router.post("/auth/access-requests/:id/approve", async (req: Request, res: Respo
       res.status(500).json({ error: "Internal server error" });
     }
   }
-});
+}));
 
 /**
  * DELETE /auth/access-requests/:id — admin only: deny/remove a request
@@ -287,7 +287,7 @@ router.get("/auth/users", asyncHandler(async (req: Request, res: Response) => {
 /**
  * POST /auth/users — admin only: create a new user manually
  */
-router.post("/auth/users", async (req: Request, res: Response) => {
+router.post("/auth/users", asyncHandler(async (req: Request, res: Response) => {
   if (!["admin", "chair"].includes(req.session.role ?? "")) {
     res.status(403).json({ error: "Admin access required" });
     return;
@@ -330,7 +330,7 @@ router.post("/auth/users", async (req: Request, res: Response) => {
       res.status(500).json({ error: "Internal server error" });
     }
   }
-});
+}));
 
 /**
  * PATCH /auth/users/:id — admin only: update user (toggle active, change role, reset password)

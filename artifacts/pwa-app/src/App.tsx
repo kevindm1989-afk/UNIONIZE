@@ -112,7 +112,6 @@ function StewardRouter() {
 
       <Route path="/stats" component={Stats} />
       <Route path="/coverage" component={Coverage} />
-      <Route path="/polls" component={Polls} />
 
       <Route component={NotFound} />
     </Switch>
@@ -201,7 +200,10 @@ function App() {
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <IdleLogout />
-            {user?.role === "member" ? <MemberPortalRouter /> : <StewardRouter />}
+            <Switch>
+              <Route path="/polls" component={Polls} />
+              <Route>{user?.role === "member" ? <MemberPortalRouter /> : <StewardRouter />}</Route>
+            </Switch>
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
