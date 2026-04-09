@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "Local1285!";
 const ADMIN_DISPLAY_NAME = process.env.ADMIN_DISPLAY_NAME ?? "Administrator";
 
 export const ALL_PERMISSIONS = [
@@ -526,9 +525,23 @@ export async function seedAdminUser(): Promise<void> {
       .where(eq(usersTable.username, ADMIN_USERNAME))
       .limit(1);
 
+    // Admin already exists — nothing to seed, no credential check needed.
     if (existing) return;
 
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+    // Refuse to create the admin account with an unknown/default password.
+    // This is a hard stop: set ADMIN_PASSWORD via `fly secrets set` before
+    // the first deploy, or via your local .env file in development.
+    if (!process.env.ADMIN_PASSWORD) {
+      console.error(
+        "FATAL: ADMIN_PASSWORD environment variable is not set. " +
+          "Refusing to seed admin account. " +
+          "Set it via: fly secrets set ADMIN_PASSWORD=<value>  (production) " +
+          "or add it to your local environment (development)."
+      );
+      process.exit(1);
+    }
+
+    const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
 
     await db.insert(usersTable).values({
       username: ADMIN_USERNAME,

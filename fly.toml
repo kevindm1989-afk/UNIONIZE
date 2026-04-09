@@ -6,6 +6,9 @@ primary_region = "ord"
 [env]
   PORT = "8080"
   NODE_ENV = "production"
+  # ADMIN_PASSWORD must be set as a Fly secret — never committed here.
+  # Run once after deploy: fly secrets set ADMIN_PASSWORD=<strong-random-value>
+  # ADMIN_USERNAME defaults to "admin" if not set (also injectable as a secret).
 
 [http_service]
   internal_port = 8080

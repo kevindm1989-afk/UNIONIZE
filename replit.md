@@ -72,10 +72,25 @@ Mobile PWA for Union Local 1285 stewards to manage member records, track grievan
 ## Dues Statuses
 `current` | `delinquent` | `suspended` | `exempt`
 
+## Required Secrets
+
+The API server will **refuse to start** if any of these are missing in production:
+
+| Secret | Where to set | Notes |
+|---|---|---|
+| `ADMIN_PASSWORD` | `fly secrets set ADMIN_PASSWORD=<value>` | **Mandatory.** No default. Server exits with a fatal error if unset. Use a strong random value (≥16 chars). |
+| `ADMIN_USERNAME` | `fly secrets set ADMIN_USERNAME=<value>` | Optional — defaults to `"admin"` if unset. |
+| `DATABASE_URL` | Neon dashboard → Connection string | PostgreSQL connection string. |
+| `ANTHROPIC_API_KEY` | Replit Secrets (AI integration) | Required for the AI assistant feature. |
+
+> **Never commit credential values.** `fly.toml` contains only a reference comment for `ADMIN_PASSWORD`.
+> Run `fly secrets list` to verify secrets are present before deploying.
+
 ## Security Features
 - Password strength: min 12 chars, upper+lower+digit+special required (enforced on user create/reset)
 - Idle auto-logout: 30 minutes of inactivity signs user out
 - Audit logging: all member/grievance CRUD logged to `audit_logs` with IP, user, old/new values
+- **No hardcoded credentials** — `ADMIN_PASSWORD` has no fallback; server exits at startup if the env var is absent
 
 ## Grievance Enhancements
 - Steps 1–5 (Step 5 = Arbitration with 30-day deadline)
