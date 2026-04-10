@@ -1,7 +1,7 @@
 {
-  "name": "Union Steward App",
-  "short_name": "Union Local",
-  "description": "Union Steward Management Portal",
+  "name": "Unionize",
+  "short_name": "Unionize",
+  "description": "Unionize — Member & Steward Portal",
   "icons": [
     {
       "src": "/favicon.svg",
