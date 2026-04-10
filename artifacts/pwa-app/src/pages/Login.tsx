@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -45,9 +45,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         <div className="w-full max-w-[360px] space-y-6">
           {/* Logo */}
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
-              <ShieldCheck className="w-9 h-9 text-primary-foreground" />
-            </div>
+            <img src="/favicon.svg" alt="Unionize" className="w-16 h-16 mx-auto rounded-2xl shadow-lg" />
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Unionize</h1>
             <p className="text-sm text-muted-foreground">Steward Portal</p>
           </div>
