@@ -1,6 +1,6 @@
 const CACHE_NAME = 'union-local-1285-v2';
 const urlsToCache = [
-  '/favicon.svg',
+  '/icon.png',
   '/manifest.json'
 ];
 
@@ -44,8 +44,8 @@ self.addEventListener('push', event => {
 
   const options = {
     body: payload.body || '',
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/icon.png',
+    badge: '/icon.png',
     tag: payload.tag || 'union-notification',
     data: { url: payload.url || '/' },
     requireInteraction: false,

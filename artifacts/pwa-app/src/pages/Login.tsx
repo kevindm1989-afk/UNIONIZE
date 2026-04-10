@@ -45,7 +45,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         <div className="w-full max-w-[360px] space-y-6">
           {/* Logo */}
           <div className="text-center space-y-2">
-            <img src="/favicon.svg" alt="Unionize" className="w-16 h-16 mx-auto rounded-2xl shadow-lg" />
+            <img src="/icon.png" alt="Unionize" className="w-16 h-16 mx-auto rounded-2xl shadow-lg" />
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Unionize</h1>
             <p className="text-sm text-muted-foreground">Steward Portal</p>
           </div>
