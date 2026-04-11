@@ -1,7 +1,7 @@
 {
-  "name": "Advisor",
-  "short_name": "Advisor",
-  "description": "Advisor — Member & Steward Portal",
+  "name": "JHSC Advisor",
+  "short_name": "JHSC Advisor",
+  "description": "JHSC Advisor — Member & Steward Portal",
   "icons": [
     {
       "src": "/icon.png",
