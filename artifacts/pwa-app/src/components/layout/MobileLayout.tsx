@@ -193,7 +193,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
 
             if (isMidpoint) {
               return (
-                <div key={item.id} className="flex flex-col items-center relative" style={{ minWidth: 0, flex: 1 }}>
+                <div key={item.id} className="flex flex-col items-center" style={{ minWidth: 0, flex: 1 }}>
                   <Link
                     href={item.href}
                     className={cn(
@@ -207,9 +207,9 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   {newLink && (
                     <Link
                       href={newLink}
-                      className="absolute -top-6 flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+                      className="flex items-center justify-center w-10 h-10 bg-primary text-primary-foreground rounded-xl shadow-md shadow-primary/30 hover:scale-105 active:scale-95 transition-all mt-0.5"
                     >
-                      <Plus className="w-6 h-6" strokeWidth={2.5} />
+                      <Plus className="w-5 h-5" strokeWidth={2.5} />
                     </Link>
                   )}
                 </div>
