@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jhsctracker-v2';
+const CACHE_NAME = 'union-local-1285-v2';
 const urlsToCache = [
   '/icon.png',
   '/manifest.json'
@@ -39,7 +39,7 @@ self.addEventListener('push', event => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: 'JHSC Advisor', body: event.data.text() };
+    payload = { title: 'Unionize', body: event.data.text() };
   }
 
   const options = {
@@ -52,7 +52,7 @@ self.addEventListener('push', event => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || 'JHSC Advisor', options)
+    self.registration.showNotification(payload.title || 'Unionize', options)
   );
 });
 
