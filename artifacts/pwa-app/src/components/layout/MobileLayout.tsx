@@ -60,7 +60,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-[100dvh] max-w-[480px] mx-auto bg-background pb-[76px] relative flex flex-col shadow-2xl ring-1 ring-border">
+    <div className={cn("min-h-[100dvh] max-w-[480px] mx-auto bg-background relative flex flex-col shadow-2xl ring-1 ring-border", newLink ? "pb-[116px]" : "pb-[76px]")}>
       {user && (
         <div className="flex items-center justify-end px-4 py-2 border-b border-border/50 bg-background/95 backdrop-blur-sm relative z-30">
           <div className="relative">
@@ -184,38 +184,21 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
+      {/* Floating action button — sits cleanly above the nav, never covers content */}
+      {newLink && (
+        <Link
+          href={newLink}
+          className="fixed bottom-[84px] left-1/2 -translate-x-1/2 z-[60] flex items-center justify-center w-14 h-14 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/40 border-[3px] border-background hover:scale-105 active:scale-95 transition-all"
+        >
+          <Plus className="w-7 h-7" strokeWidth={2.5} />
+        </Link>
+      )}
+
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-background border-t border-border z-50">
         <div className="flex items-center justify-between px-1 pb-safe">
-          {navItems.map((item, i) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = section === item.id;
-            const isMidpoint = i === 2 && newLink;
-
-            if (isMidpoint) {
-              return (
-                <div key={item.id} className="flex flex-col items-center relative" style={{ minWidth: 0, flex: 1 }}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex flex-col items-center justify-center py-2 gap-0.5 w-full transition-all rounded-xl",
-                      isActive ? "text-primary font-bold" : "text-muted-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-[9px] font-semibold uppercase tracking-wide">{item.label}</span>
-                  </Link>
-                  {newLink && (
-                    <Link
-                      href={newLink}
-                      className="absolute -top-6 flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
-                    >
-                      <Plus className="w-6 h-6" strokeWidth={2.5} />
-                    </Link>
-                  )}
-                </div>
-              );
-            }
-
             return (
               <Link
                 key={item.id}
