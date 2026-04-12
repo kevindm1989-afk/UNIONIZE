@@ -6,11 +6,11 @@ import { useAuth } from "@/App";
 
 const navItems = [
   { id: "profile", href: "/portal", icon: User, label: "Profile" },
-  { id: "grievances", href: "/portal/grievances", icon: FileText, label: "Grievances" },
-  { id: "bulletins", href: "/portal/bulletins", icon: Bell, label: "Bulletins" },
-  { id: "discipline", href: "/portal/discipline", icon: ShieldAlert, label: "Discipline" },
+  { id: "grievances", href: "/portal/grievances", icon: FileText, label: "Cases" },
+  { id: "bulletins", href: "/portal/bulletins", icon: Bell, label: "Bulletin" },
+  { id: "discipline", href: "/portal/discipline", icon: ShieldAlert, label: "Conduct" },
   { id: "polls", href: "/polls", icon: Vote, label: "Polls" },
-  { id: "assistant", href: "/portal/assistant", icon: Sparkles, label: "Assistant" },
+  { id: "assistant", href: "/portal/assistant", icon: Sparkles, label: "Assist" },
   { id: "sign-card", href: "/portal/sign-card", icon: PenLine, label: "Card" },
 ];
 
