@@ -16,6 +16,10 @@ import {
   DeleteGrievanceParams,
 } from "@workspace/api-zod";
 import { asyncHandler } from "../lib/asyncHandler";
+import { ai } from "../lib/gemini/client";
+import { GEMINI_MODEL, GEMINI_MAX_TOKENS } from "../lib/anthropic/constants";
+// @ts-ignore — .txt imported via esbuild text loader
+import cbaText from "../data/cba.txt";
 
 const router = Router();
 
@@ -90,6 +94,68 @@ function generateGrievanceNumber(): string {
 }
 
 // ─── routes ───────────────────────────────────────────────────────────────────
+
+const GRIEVANCE_DRAFT_SYSTEM_PROMPT = `You are a formal grievance drafting assistant for Unifor Local 1285, a Canadian union operating under Ontario labor law. When given a description of a workplace incident, draft a formal grievance that includes: a clear statement of the grievance, the specific collective agreement articles violated, the just cause principles breached, the remedy sought, and the procedural step (Step 1, Step 2, or Arbitration). Always use formal union grievance language. Never file or send anything — output is a draft for steward review only.
+
+You have access to the collective agreement text. Reference specific article numbers wherever possible. Structure the grievance formally with labelled sections. Respond only with a JSON object — no markdown, no backticks.`;
+
+router.post("/draft", requirePermission("grievances.view"), asyncHandler(async (req, res) => {
+  const { whatHappened, incidentDate, membersInvolved, managementInvolved, department, grievanceType } = req.body;
+
+  if (!whatHappened || typeof whatHappened !== "string" || whatHappened.trim().length < 10) {
+    res.status(400).json({ error: "whatHappened must be at least 10 characters" });
+    return;
+  }
+
+  const userPrompt = `Please draft a formal Unifor grievance based on the following incident:
+
+WHAT HAPPENED: ${whatHappened.trim()}
+DATE OF INCIDENT: ${incidentDate || "Not specified"}
+MEMBER(S) INVOLVED: ${membersInvolved || "Not specified"}
+MANAGEMENT INVOLVED: ${managementInvolved || "Not specified"}
+DEPARTMENT / SHIFT: ${department || "Not specified"}
+GRIEVANCE TYPE: ${grievanceType || "Not specified"}
+
+COLLECTIVE AGREEMENT TEXT FOR REFERENCE:
+${cbaText}
+
+Respond with a JSON object using exactly these keys:
+{
+  "suggestedTitle": "A concise grievance title (max 80 chars)",
+  "suggestedArticles": "Comma-separated CBA article references violated",
+  "suggestedRemedy": "The remedy sought in formal language",
+  "suggestedStep": 1,
+  "draft": "The full formal grievance text with labelled sections: STATEMENT OF GRIEVANCE, ARTICLES VIOLATED, JUST CAUSE PRINCIPLES BREACHED, REMEDY SOUGHT, PROCEDURAL STEP"
+}`;
+
+  const result = await ai.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    config: {
+      systemInstruction: GRIEVANCE_DRAFT_SYSTEM_PROMPT,
+      responseMimeType: "application/json",
+      maxOutputTokens: GEMINI_MAX_TOKENS,
+    },
+  });
+
+  const text = result.text ?? "";
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    res.status(502).json({ error: "AI returned an unparseable response. Please try again." });
+    return;
+  }
+
+  res.json({
+    suggestedTitle: parsed.suggestedTitle ?? "",
+    suggestedArticles: parsed.suggestedArticles ?? "",
+    suggestedRemedy: parsed.suggestedRemedy ?? "",
+    suggestedStep: parsed.suggestedStep ?? 1,
+    draft: parsed.draft ?? "",
+  });
+}));
 
 router.get("/", asyncHandler(async (req, res) => {
   const parsed = ListGrievancesQueryParams.safeParse(req.query);

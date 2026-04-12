@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ChevronLeft, Loader2, LayoutTemplate } from "lucide-react";
+import { ChevronLeft, Loader2, LayoutTemplate, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,23 @@ interface GrievanceTemplate {
   descriptionTemplate: string;
   contractArticle: string | null;
   defaultStep: number;
+}
+
+interface AiDraftResult {
+  suggestedTitle: string;
+  suggestedArticles: string;
+  suggestedRemedy: string;
+  suggestedStep: number;
+  draft: string;
+}
+
+interface AiIntakeForm {
+  whatHappened: string;
+  incidentDate: string;
+  membersInvolved: string;
+  managementInvolved: string;
+  department: string;
+  grievanceType: string;
 }
 
 const VIOLATION_TYPE_COLORS: Record<string, string> = {
@@ -86,6 +103,84 @@ export default function GrievanceCreate() {
   });
   const { data: members } = useListMembers();
   const [showTemplates, setShowTemplates] = useState(false);
+
+  // ── AI Draft state ────────────────────────────────────────────────────────
+  const [showAiSheet, setShowAiSheet] = useState(false);
+  const [aiPhase, setAiPhase] = useState<"form" | "loading" | "preview">("form");
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AiDraftResult | null>(null);
+  const [editableDraft, setEditableDraft] = useState("");
+  const [isApprovingDraft, setIsApprovingDraft] = useState(false);
+  const [aiIntake, setAiIntake] = useState<AiIntakeForm>({
+    whatHappened: "",
+    incidentDate: "",
+    membersInvolved: "",
+    managementInvolved: "",
+    department: "",
+    grievanceType: "",
+  });
+
+  const resetAiSheet = () => {
+    setAiPhase("form");
+    setAiError(null);
+    setAiResult(null);
+    setEditableDraft("");
+    setAiIntake({ whatHappened: "", incidentDate: "", membersInvolved: "", managementInvolved: "", department: "", grievanceType: "" });
+  };
+
+  const handleAiGenerate = async () => {
+    if (aiIntake.whatHappened.trim().length < 10) {
+      setAiError("Please describe what happened in at least 10 characters.");
+      return;
+    }
+    setAiError(null);
+    setAiPhase("loading");
+    try {
+      const res = await fetch("/api/grievances/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(aiIntake),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || `Request failed (${res.status})`);
+      }
+      const data: AiDraftResult = await res.json();
+      setAiResult(data);
+      setEditableDraft(data.draft);
+      setAiPhase("preview");
+    } catch (e: any) {
+      setAiError(e.message || "Failed to generate draft. Please try again.");
+      setAiPhase("form");
+    }
+  };
+
+  const handleApproveAndSubmit = async () => {
+    if (!aiResult) return;
+    setIsApprovingDraft(true);
+    try {
+      createGrievance.mutate({
+        data: {
+          title: aiResult.suggestedTitle || aiIntake.whatHappened.slice(0, 80),
+          memberId: null,
+          grievanceType: aiIntake.grievanceType || null,
+          incidentDate: aiIntake.incidentDate || null,
+          remedyRequested: aiResult.suggestedRemedy || null,
+          description: editableDraft,
+          contractArticle: aiResult.suggestedArticles || null,
+          step: aiResult.suggestedStep ?? 1,
+          status: "open",
+          filedDate: todayStr,
+          dueDate: null,
+          notes: `AI-drafted grievance. Original incident description: ${aiIntake.whatHappened}`,
+          accommodationRequest: false,
+        } as any,
+      });
+    } finally {
+      setIsApprovingDraft(false);
+    }
+  };
 
   const { data: templates = [] } = useQuery<GrievanceTemplate[]>({
     queryKey: ["grievance-templates"],
@@ -150,13 +245,22 @@ export default function GrievanceCreate() {
             <ChevronLeft className="w-6 h-6" />
           </Link>
           <span className="font-bold tracking-tight text-sm uppercase">File Grievance</span>
-          <button
-            onClick={() => setShowTemplates(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/5"
-          >
-            <LayoutTemplate className="w-4 h-4" />
-            Templates
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { resetAiSheet(); setShowAiSheet(true); }}
+              className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Draft
+            </button>
+            <button
+              onClick={() => setShowTemplates(true)}
+              className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted/50"
+            >
+              <LayoutTemplate className="w-3.5 h-3.5" />
+              Templates
+            </button>
+          </div>
         </header>
 
         <div className="p-5 flex-1">
@@ -356,6 +460,198 @@ export default function GrievanceCreate() {
           </Form>
         </div>
       </div>
+
+      {/* ── AI Grievance Drafting Sheet ─────────────────────────────────────── */}
+      <Sheet open={showAiSheet} onOpenChange={(open) => { setShowAiSheet(open); if (!open) resetAiSheet(); }}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[92dvh] flex flex-col p-0">
+          <SheetHeader className="px-5 pt-5 pb-3 border-b border-border flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <SheetTitle className="text-base">AI Grievance Drafting Assistant</SheetTitle>
+                <p className="text-xs text-muted-foreground">Powered by Gemini · Unifor Local 1285</p>
+              </div>
+            </div>
+            {aiPhase === "preview" && (
+              <div className="flex items-center gap-1.5 mt-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">This is an AI draft — steward must review and approve before filing.</p>
+              </div>
+            )}
+          </SheetHeader>
+
+          <div className="overflow-y-auto flex-1 px-5 py-4">
+            {/* Phase: Intake Form */}
+            {(aiPhase === "form" || aiPhase === "loading") && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                    What happened? <span className="text-destructive">*</span>
+                  </label>
+                  <Textarea
+                    placeholder="Describe the incident in plain language — what occurred, when, and why it's a violation of the collective agreement..."
+                    className="min-h-[110px] rounded-xl bg-card resize-none"
+                    value={aiIntake.whatHappened}
+                    onChange={(e) => setAiIntake(p => ({ ...p, whatHappened: e.target.value }))}
+                    disabled={aiPhase === "loading"}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Date of Incident</label>
+                    <Input
+                      type="date"
+                      className="h-11 rounded-xl bg-card"
+                      value={aiIntake.incidentDate}
+                      onChange={(e) => setAiIntake(p => ({ ...p, incidentDate: e.target.value }))}
+                      disabled={aiPhase === "loading"}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Grievance Type</label>
+                    <Select value={aiIntake.grievanceType} onValueChange={(v) => setAiIntake(p => ({ ...p, grievanceType: v }))} disabled={aiPhase === "loading"}>
+                      <SelectTrigger className="h-11 rounded-xl bg-card">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {GRIEVANCE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Member(s) Involved</label>
+                  <Input
+                    placeholder="e.g. Jane Smith, Employee #4521"
+                    className="h-11 rounded-xl bg-card"
+                    value={aiIntake.membersInvolved}
+                    onChange={(e) => setAiIntake(p => ({ ...p, membersInvolved: e.target.value }))}
+                    disabled={aiPhase === "loading"}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Management Involved</label>
+                  <Input
+                    placeholder="e.g. Supervisor John Doe, Plant Manager"
+                    className="h-11 rounded-xl bg-card"
+                    value={aiIntake.managementInvolved}
+                    onChange={(e) => setAiIntake(p => ({ ...p, managementInvolved: e.target.value }))}
+                    disabled={aiPhase === "loading"}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Department / Shift</label>
+                  <Input
+                    placeholder="e.g. Assembly Line B, Night Shift"
+                    className="h-11 rounded-xl bg-card"
+                    value={aiIntake.department}
+                    onChange={(e) => setAiIntake(p => ({ ...p, department: e.target.value }))}
+                    disabled={aiPhase === "loading"}
+                  />
+                </div>
+
+                {aiError && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 bg-destructive/10 border border-destructive/20 rounded-xl">
+                    <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-destructive">{aiError}</p>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full h-12 rounded-xl font-bold text-sm gap-2"
+                  onClick={handleAiGenerate}
+                  disabled={aiPhase === "loading" || aiIntake.whatHappened.trim().length < 10}
+                >
+                  {aiPhase === "loading" ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Drafting grievance…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Generate Draft
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Phase: Draft Preview */}
+            {aiPhase === "preview" && aiResult && (
+              <div className="space-y-4">
+                {/* Suggested metadata */}
+                <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
+                  <div className="px-4 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Suggested Title</p>
+                    <p className="text-sm font-semibold text-foreground">{aiResult.suggestedTitle}</p>
+                  </div>
+                  {aiResult.suggestedArticles && (
+                    <div className="px-4 py-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Articles Violated</p>
+                      <p className="text-sm text-foreground">{aiResult.suggestedArticles}</p>
+                    </div>
+                  )}
+                  {aiResult.suggestedRemedy && (
+                    <div className="px-4 py-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Remedy Sought</p>
+                      <p className="text-sm text-foreground">{aiResult.suggestedRemedy}</p>
+                    </div>
+                  )}
+                  <div className="px-4 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Step</p>
+                    <p className="text-sm text-foreground">Step {aiResult.suggestedStep}</p>
+                  </div>
+                </div>
+
+                {/* Editable draft body */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Grievance Draft</p>
+                    <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">Draft</span>
+                  </div>
+                  <Textarea
+                    className="min-h-[280px] rounded-xl bg-card resize-none text-sm font-mono leading-relaxed"
+                    value={editableDraft}
+                    onChange={(e) => setEditableDraft(e.target.value)}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1.5">You may edit this draft before approving. All changes are yours — the AI will not re-generate.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pb-2">
+                  <Button
+                    variant="outline"
+                    className="h-12 rounded-xl font-semibold"
+                    onClick={() => setAiPhase("form")}
+                  >
+                    ← Revise Input
+                  </Button>
+                  <Button
+                    className="h-12 rounded-xl font-bold gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={handleApproveAndSubmit}
+                    disabled={isApprovingDraft || createGrievance.isPending || !editableDraft.trim()}
+                  >
+                    {(isApprovingDraft || createGrievance.isPending) ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Approve & File
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Templates Sheet */}
       <Sheet open={showTemplates} onOpenChange={setShowTemplates}>
