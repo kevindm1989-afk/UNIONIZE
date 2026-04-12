@@ -633,12 +633,12 @@ export default function MemberDetail() {
         )}
 
         {/* Steward-privileged notes */}
-        {(!isAdmin || activeTab === "overview") && can("members.edit") && (member as any).stewardNotes && (
+        {(!isAdmin || activeTab === "overview") && can("members.edit") && (member as any)?.stewardNotes && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-1.5">
               🔒 Steward Notes (Private)
             </p>
-            <p className="text-sm whitespace-pre-wrap text-foreground">{(member as any).stewardNotes}</p>
+            <p className="text-sm whitespace-pre-wrap text-foreground">{(member as any)?.stewardNotes}</p>
           </div>
         )}
 

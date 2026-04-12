@@ -194,7 +194,9 @@ router.get("/:id", asyncHandler(async (req, res) => {
     return;
   }
 
-  res.json(formatMember(member));
+  const callerRole = (req as any).session?.role ?? "member";
+  const includePrivileged = ["admin", "steward", "co_chair", "chair"].includes(callerRole);
+  res.json(formatMember(member, includePrivileged));
 }));
 
 router.patch("/:id", requirePermission("members.edit"), asyncHandler(async (req, res) => {
