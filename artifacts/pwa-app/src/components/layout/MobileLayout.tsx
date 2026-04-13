@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useAuth, usePermissions } from "@/App";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useTheme } from "@/hooks/useTheme";
+import { useQuery } from "@tanstack/react-query";
+import { ALERTS_QUERY_KEY } from "@/pages/Dashboard";
 
 export function MobileLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -13,6 +15,16 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { status: pushStatus, subscribe, unsubscribe } = usePushNotifications();
   const { isDark, toggle } = useTheme();
+
+  const { data: alertsData } = useQuery<{ counts: { critical: number; warning: number; total: number } }>({
+    queryKey: ALERTS_QUERY_KEY,
+    queryFn: () =>
+      fetch("/api/grievances/alerts", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    enabled: !!user,
+  });
+  const alertCount = alertsData?.counts?.total ?? 0;
 
   // Apply theme on mount
   useEffect(() => {
@@ -199,6 +211,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = section === item.id;
+            const showBadge = item.id === "grievances" && alertCount > 0;
             return (
               <Link
                 key={item.id}
@@ -209,7 +222,19 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   isActive ? "text-primary font-bold" : "text-muted-foreground hover:bg-muted/50"
                 )}
               >
-                <Icon className="w-5 h-5" />
+                <div className="relative">
+                  <Icon className="w-5 h-5" />
+                  {showBadge && (
+                    <span className={cn(
+                      "absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[8px] font-black px-0.5",
+                      alertCount > 0 && alertsData?.counts?.critical && alertsData.counts.critical > 0
+                        ? "bg-red-500 text-white"
+                        : "bg-amber-500 text-white"
+                    )}>
+                      {alertCount > 9 ? "9+" : alertCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[9px] font-semibold uppercase tracking-wide">{item.label}</span>
               </Link>
             );

@@ -5,12 +5,28 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetRecentActivityQueryKey,
 } from "@workspace/api-client-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, FileText, AlertTriangle, Clock, ChevronRight, Bell, CalendarClock, ShieldAlert } from "lucide-react";
+import {
+  Users,
+  FileText,
+  AlertTriangle,
+  Clock,
+  ChevronRight,
+  Bell,
+  CalendarClock,
+  ShieldAlert,
+  ArrowUpCircle,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+export const ALERTS_QUERY_KEY = ["grievance-alerts"] as const;
 
 const statusColors: Record<string, string> = {
   member_requested: "bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400",
@@ -39,7 +55,215 @@ interface UpcomingGrievance {
   isOverdue: boolean;
 }
 
+interface AlertGrievance {
+  id: number;
+  grievanceNumber: string;
+  title: string;
+  step: number;
+  status: string;
+  dueDate: string;
+  memberId: number | null;
+  memberName: string | null;
+  urgency: "critical" | "warning";
+  businessDaysUntilDue: number;
+  aiMessage: string;
+}
+
+interface AlertsResponse {
+  alerts: AlertGrievance[];
+  counts: { critical: number; warning: number; total: number };
+}
+
+function stepLabel(step: number) {
+  if (step >= 5) return "Arbitration";
+  return `Step ${step}`;
+}
+
+function QuickActionButton({
+  onClick,
+  loading,
+  done,
+  icon: Icon,
+  label,
+  variant,
+}: {
+  onClick: () => void;
+  loading: boolean;
+  done: boolean;
+  icon: React.ElementType;
+  label: string;
+  variant: "escalate" | "response" | "close";
+}) {
+  const colors = {
+    escalate: "border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30",
+    response: "border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30",
+    close: "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800/30",
+  };
+
+  if (done) {
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 dark:text-green-400">
+        <CheckCircle2 className="w-3 h-3" />
+        Done
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={cn(
+        "flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
+        colors[variant]
+      )}
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Icon className="w-3 h-3" />}
+      {label}
+    </button>
+  );
+}
+
+function AlertCard({ alert, onActionDone }: { alert: AlertGrievance; onActionDone: () => void }) {
+  const [escalateState, setEscalateState] = useState<"idle" | "loading" | "done">("idle");
+  const [responseState, setResponseState] = useState<"idle" | "loading" | "done">("idle");
+  const [closeState, setCloseState] = useState<"idle" | "loading" | "done">("idle");
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+
+  const isCritical = alert.urgency === "critical";
+  const overdueDays = Math.abs(alert.businessDaysUntilDue);
+
+  async function patchGrievance(body: Record<string, unknown>) {
+    const res = await fetch(`/api/grievances/${alert.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Update failed");
+    return res.json();
+  }
+
+  async function handleEscalate() {
+    setEscalateState("loading");
+    try {
+      await patchGrievance({ step: alert.step + 1, status: "open" });
+      setEscalateState("done");
+      setTimeout(onActionDone, 800);
+    } catch {
+      setEscalateState("idle");
+    }
+  }
+
+  async function handleMarkResponse() {
+    setResponseState("loading");
+    try {
+      await patchGrievance({ status: "pending_hearing" });
+      setResponseState("done");
+      setTimeout(onActionDone, 800);
+    } catch {
+      setResponseState("idle");
+    }
+  }
+
+  async function handleClose() {
+    setCloseState("loading");
+    try {
+      await patchGrievance({ status: "resolved" });
+      setCloseState("done");
+      setTimeout(onActionDone, 800);
+    } catch {
+      setCloseState("idle");
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-4 space-y-3 relative",
+        isCritical
+          ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40"
+          : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40"
+      )}
+    >
+      <button
+        onClick={() => setDismissed(true)}
+        className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+        aria-label="Dismiss"
+      >
+        <XCircle className="w-3.5 h-3.5" />
+      </button>
+
+      <div className="flex items-start gap-2 pr-5">
+        <div className={cn("mt-0.5 flex-shrink-0", isCritical ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-500")}>
+          <AlertTriangle className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+            <span className={cn(
+              "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+              isCritical
+                ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+            )}>
+              {isCritical ? `Overdue ${overdueDays}d` : `Due in ${alert.businessDaysUntilDue}d`}
+            </span>
+            <span className="text-[9px] font-bold text-muted-foreground">{alert.grievanceNumber}</span>
+            <span className="text-[9px] font-semibold text-muted-foreground">{stepLabel(alert.step)}</span>
+          </div>
+          <Link href={`/grievances/${alert.id}`}>
+            <p className={cn(
+              "text-sm font-bold leading-tight hover:underline",
+              isCritical ? "text-red-900 dark:text-red-300" : "text-amber-900 dark:text-amber-300"
+            )}>
+              {alert.title}
+            </p>
+          </Link>
+          {alert.memberName && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{alert.memberName}</p>
+          )}
+        </div>
+      </div>
+
+      <p className="text-xs text-foreground/80 leading-relaxed pl-6">
+        {alert.aiMessage}
+      </p>
+
+      <div className="flex items-center gap-2 pl-6 flex-wrap">
+        <QuickActionButton
+          onClick={handleEscalate}
+          loading={escalateState === "loading"}
+          done={escalateState === "done"}
+          icon={ArrowUpCircle}
+          label={`Escalate to ${stepLabel(alert.step + 1)}`}
+          variant="escalate"
+        />
+        <QuickActionButton
+          onClick={handleMarkResponse}
+          loading={responseState === "loading"}
+          done={responseState === "done"}
+          icon={CheckCircle2}
+          label="Response Received"
+          variant="response"
+        />
+        <QuickActionButton
+          onClick={handleClose}
+          loading={closeState === "loading"}
+          done={closeState === "done"}
+          icon={XCircle}
+          label="Close"
+          variant="close"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const queryClient = useQueryClient();
+
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary({
     query: { queryKey: getGetDashboardSummaryQueryKey() },
   });
@@ -52,6 +276,14 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
 
+  const { data: alertsData, isLoading: isLoadingAlerts } = useQuery<AlertsResponse>({
+    queryKey: ALERTS_QUERY_KEY,
+    queryFn: () =>
+      fetch("/api/grievances/alerts", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const { data: cbaSettings } = useQuery<{ cba_expiry_date?: string; cba_name?: string }>({
     queryKey: ["cba-settings"],
     queryFn: () => fetch("/api/cba-info", { credentials: "include" }).then((r) => r.json()),
@@ -59,6 +291,15 @@ export default function Dashboard() {
   });
 
   const today = new Date();
+
+  function invalidateAlerts() {
+    queryClient.invalidateQueries({ queryKey: ALERTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
+  }
+
+  const alerts = alertsData?.alerts ?? [];
+  const alertCounts = alertsData?.counts ?? { critical: 0, warning: 0, total: 0 };
 
   return (
     <MobileLayout>
@@ -142,6 +383,49 @@ export default function Dashboard() {
             </>
           )}
         </section>
+
+        {/* Deadline Alerts */}
+        {(isLoadingAlerts || alertCounts.total > 0) && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className={cn(
+                  "w-4 h-4",
+                  alertCounts.critical > 0 ? "text-red-500" : "text-amber-500"
+                )} />
+                <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground">
+                  Deadline Alerts
+                </h2>
+                {alertCounts.total > 0 && (
+                  <span className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                    alertCounts.critical > 0
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  )}>
+                    {alertCounts.critical > 0 ? `${alertCounts.critical} critical` : `${alertCounts.warning} due soon`}
+                  </span>
+                )}
+              </div>
+              <Link href="/grievances" className="text-xs font-semibold text-primary flex items-center gap-0.5">
+                View all <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {isLoadingAlerts ? (
+              <div className="space-y-2">
+                <Skeleton className="h-[120px] rounded-xl" />
+                <Skeleton className="h-[120px] rounded-xl" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {alerts.map((alert) => (
+                  <AlertCard key={alert.id} alert={alert} onActionDone={invalidateAlerts} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* CBA Expiry Widget */}
         {cbaSettings?.cba_expiry_date && (() => {

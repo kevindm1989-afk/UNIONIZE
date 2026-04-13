@@ -25,10 +25,18 @@ import pollsRouter from "./polls";
 import onboardingRouter from "./onboarding";
 import cbaInfoRouter from "./cba-info";
 import accessRequestsRouter from "./access-requests";
+import grievanceAlertsRouter, { runDailyAlertJob } from "./grievance-alerts";
 import { requirePermission, requireSteward } from "../lib/permissions";
 
 // Init VAPID keys after the DB startup chain completes
 setTimeout(() => initVapid().catch(() => {}), 5000);
+
+// Daily grievance deadline alert job — runs 45s after startup then every 24h
+const DAILY_MS = 24 * 60 * 60 * 1000;
+setTimeout(() => {
+  runDailyAlertJob().catch(() => {});
+  setInterval(() => runDailyAlertJob().catch(() => {}), DAILY_MS);
+}, 45_000);
 
 const router: IRouter = Router();
 
@@ -49,6 +57,7 @@ router.use(requireAuth);
 
 router.use("/member-portal", memberPortalRouter);
 router.use("/members", requirePermission("members.view"), membersRouter);
+router.use("/grievances/alerts", requirePermission("grievances.view"), grievanceAlertsRouter);
 router.use("/grievances", requirePermission("grievances.view"), grievancesRouter);
 router.use("/announcements", requirePermission("bulletins.view"), announcementsRouter);
 router.use("/dashboard", dashboardRouter);
