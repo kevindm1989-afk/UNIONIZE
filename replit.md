@@ -71,6 +71,46 @@ All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUM
 - **MeetingDetail** (`/meetings/:id`) — agenda builder (add/remove items), attendance tracking
 - **Documents** (`/documents`) — search bar, stewardOnly badge/toggle
 - **CbaAssistant** (`/assistant`) — quick-action suggestion chips, Gemini AI chat about CBA
+- **Elections** (`/elections`) — Elections & Vote Tracker (Active/Closed tabs, Cast Ballot, Live Tally, Close Vote, Certificate)
+
+## Election & Vote Tracker
+
+### Architecture
+- **Secret ballot**: `formal_vote_ballots` table stores `(poll_id, choice, cast_at)` — NO userId, completely anonymous
+- **Double-vote prevention**: `formal_vote_cast` table stores `(poll_id, user_id)` — tracks WHO voted, not HOW
+- **Formal votes stored in existing `polls` table** with `is_formal_vote = TRUE` and new columns:
+  - `formal_vote_type`, `quorum_required`, `quorum_met`, `closed_at`, `outcome`, `results_final`
+- **API route**: `/api/elections` (all authenticated users can vote, admin/chair can create/close)
+
+### Formal Vote Types
+- `ratification` → Accept / Reject ballot
+- `strike_vote` → Authorize Strike / Do Not Authorize ballot
+- `officer_election` → Candidate names + Write-in option
+- `return_to_work` → Yes, Return to Work / No ballot
+- `special_resolution` → In Favour / Opposed ballot
+
+### Eligibility
+- Members: must have a `linkedMemberId` and dues_status = 'current'
+- Stewards/admins: always eligible
+
+### Key API endpoints
+- `GET /api/elections` — list (stewards: all; members: active+started only), includes `hasCast`
+- `POST /api/elections` — create (admin/chair only), auto-appends write-in for officer elections
+- `POST /api/elections/:id/ballot` — cast secret ballot (checks eligibility + dedup)
+- `GET /api/elections/:id/tally` — tally (admin: anytime; members: only after closed)
+- `POST /api/elections/:id/close` — close vote, auto-determine outcome, compute quorum
+- `GET /api/elections/:id/certificate` — full official results certificate data
+- `PATCH /api/elections/:id` — update title/endsAt/quorum (admin, before close only)
+- `DELETE /api/elections/:id` — delete vote + ballots + cast records
+
+### Election Card UI
+- Active votes: type badge, title, closes date, quorum indicator, [Cast Your Ballot] or "Secret ballot cast" confirmation, admin [Live Tally] + [Close Vote] buttons
+- Closed votes: type badge, title, date closed, outcome badge (Carried/Failed/Elected), quorum status, [View Official Certificate] button
+
+### Certificate (printable)
+- Opens as a bottom sheet with full official certificate layout
+- Print button opens new window with print-optimized HTML (Georgia serif, structured layout)
+- Contains: organization, vote type, question, dates, ballot count, quorum status, tally bars, official result
 
 ## Critical Patterns
 

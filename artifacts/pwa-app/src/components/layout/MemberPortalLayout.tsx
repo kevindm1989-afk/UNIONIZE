@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { User, FileText, Bell, PenLine, LogOut, ChevronDown, ShieldAlert, Sparkles, Vote, Scale, MessageSquareWarning } from "lucide-react";
+import { User, FileText, Bell, PenLine, LogOut, ChevronDown, ShieldAlert, Sparkles, Vote, Scale, MessageSquareWarning, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/App";
 
@@ -67,13 +67,25 @@ export function MemberPortalLayout({ children }: { children: React.ReactNode }) 
                       Member
                     </span>
                   </div>
-                  <button
-                    onClick={() => { setShowUserMenu(false); logout(); }}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
+                  <div className="border-t border-border">
+                    <Link
+                      href="/elections"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <Trophy className="w-4 h-4 text-primary" />
+                      Elections & Votes
+                    </Link>
+                  </div>
+                  <div className="border-t border-border">
+                    <button
+                      onClick={() => { setShowUserMenu(false); logout(); }}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
               </>
             )}

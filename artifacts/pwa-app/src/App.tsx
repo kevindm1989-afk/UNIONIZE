@@ -30,6 +30,7 @@ import MeetingDetail from "@/pages/MeetingDetail";
 import Stats from "@/pages/Stats";
 import Coverage from "@/pages/Coverage";
 import Polls from "@/pages/Polls";
+import Elections from "@/pages/Elections";
 
 import MemberPortalProfile from "@/pages/portal/MemberPortalProfile";
 import MemberPortalGrievances from "@/pages/portal/MemberPortalGrievances";
@@ -217,6 +218,7 @@ function App() {
               <IdleLogout />
               <Switch>
                 <Route path="/polls" component={Polls} />
+                <Route path="/elections" component={Elections} />
                 <Route>{user?.role === "member" ? <MemberPortalRouter /> : <StewardRouter />}</Route>
               </Switch>
             </WouterRouter>

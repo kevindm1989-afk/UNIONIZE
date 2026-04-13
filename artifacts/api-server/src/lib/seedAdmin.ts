@@ -634,6 +634,50 @@ export async function seedAdminUser(): Promise<void> {
   }
 }
 
+export async function ensureElectionTables(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    // Add formal vote columns to existing polls table
+    await client.query(`
+      ALTER TABLE polls
+        ADD COLUMN IF NOT EXISTS is_formal_vote BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS formal_vote_type TEXT,
+        ADD COLUMN IF NOT EXISTS quorum_required INTEGER,
+        ADD COLUMN IF NOT EXISTS quorum_met BOOLEAN,
+        ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS outcome TEXT,
+        ADD COLUMN IF NOT EXISTS results_final JSONB;
+    `);
+    // Secret ballot storage — NO user_id, choice only
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS formal_vote_ballots (
+        id SERIAL PRIMARY KEY,
+        poll_id INTEGER NOT NULL,
+        choice TEXT NOT NULL,
+        cast_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_fvb_poll_id ON formal_vote_ballots(poll_id);
+    `);
+    // Tracks WHO voted (not HOW) — prevents double voting
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS formal_vote_cast (
+        id SERIAL PRIMARY KEY,
+        poll_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        cast_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT formal_vote_cast_unique UNIQUE(poll_id, user_id)
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_fvc_poll_user ON formal_vote_cast(poll_id, user_id);
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function seedDefaultPermissions(): Promise<void> {
   try {
     const chairRows = ALL_PERMISSIONS.map((p) => ({

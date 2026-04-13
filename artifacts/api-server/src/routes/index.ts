@@ -22,6 +22,7 @@ import disciplineRouter from "./discipline";
 import statsRouter from "./stats";
 import coverageRouter from "./coverage";
 import pollsRouter from "./polls";
+import electionsRouter from "./elections";
 import onboardingRouter from "./onboarding";
 import cbaInfoRouter from "./cba-info";
 import accessRequestsRouter from "./access-requests";
@@ -135,7 +136,8 @@ router.use("/complaints", complaintsRouter);
 // Any authenticated session (including role = "member") may reach these.
 // Individual endpoints within these routers enforce their own write-guard where needed.
 
-router.use("/polls",    pollsRouter);
-router.use("/cba-info", cbaInfoRouter);
+router.use("/polls",     pollsRouter);
+router.use("/elections", electionsRouter);
+router.use("/cba-info",  cbaInfoRouter);
 
 export default router;
