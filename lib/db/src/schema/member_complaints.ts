@@ -18,6 +18,8 @@ export const memberComplaintsTable = pgTable("member_complaints", {
   aiExplanation: text("ai_explanation"),
   aiPatternFlag: boolean("ai_pattern_flag").default(false),
   stewardNotes: text("steward_notes"),
+  followUpNote: text("follow_up_note"),
+  followUpAt: timestamp("follow_up_at"),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

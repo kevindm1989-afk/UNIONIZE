@@ -227,6 +227,8 @@ router.get(
         aiExplanation: staff ? memberComplaintsTable.aiExplanation : sql<null>`null`,
         aiPatternFlag: memberComplaintsTable.aiPatternFlag,
         stewardNotes: staff ? memberComplaintsTable.stewardNotes : sql<null>`null`,
+        followUpNote: memberComplaintsTable.followUpNote,
+        followUpAt: memberComplaintsTable.followUpAt,
         createdAt: memberComplaintsTable.createdAt,
         updatedAt: memberComplaintsTable.updatedAt,
         memberName: membersTable.name,

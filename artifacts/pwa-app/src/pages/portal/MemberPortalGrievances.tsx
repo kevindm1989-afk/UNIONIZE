@@ -24,6 +24,7 @@ type PortalGrievance = {
   dueDate: string | null;
   resolvedDate: string | null;
   accommodationRequest: boolean;
+  grievanceType: string | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -33,6 +34,18 @@ const statusColors: Record<string, string> = {
   pending_hearing: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   resolved: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
   withdrawn: "bg-muted text-muted-foreground",
+};
+
+const GRIEVANCE_TYPE_LABELS: Record<string, string> = {
+  discipline: "Discipline",
+  seniority_bypass: "Seniority",
+  wages: "Wages",
+  scheduling: "Scheduling",
+  health_safety: "H&S",
+  harassment: "Harassment",
+  benefits: "Benefits",
+  accommodation: "Accommodation",
+  other: "Other",
 };
 
 const statusLabel: Record<string, string> = {
@@ -129,6 +142,11 @@ export default function MemberPortalGrievances() {
                           {statusLabel[g.status] ?? g.status}
                         </span>
                         <span className="text-[10px] text-muted-foreground">Step {g.step}</span>
+                        {g.grievanceType && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            {GRIEVANCE_TYPE_LABELS[g.grievanceType] ?? g.grievanceType}
+                          </span>
+                        )}
                         {g.accommodationRequest && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">ADA</span>
                         )}

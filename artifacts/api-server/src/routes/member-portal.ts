@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, pool, membersTable, grievancesTable, announcementsTable, usersTable, disciplineRecordsTable } from "@workspace/db";
-import { eq, desc, asc } from "drizzle-orm";
+import { db, pool, membersTable, grievancesTable, announcementsTable, usersTable, disciplineRecordsTable, memberComplaintsTable } from "@workspace/db";
+import { eq, desc, asc, and } from "drizzle-orm";
 import { ai } from "../lib/gemini/client";
 import { GEMINI_MODEL, GEMINI_MAX_TOKENS } from "../lib/anthropic/constants";
 import { z } from "zod/v4";
@@ -58,6 +58,16 @@ router.get("/profile", requireMemberAccess, asyncHandler(async (req: Request, re
       classificationDate: membersTable.classificationDate,
       isActive: membersTable.isActive,
       signedAt: membersTable.signedAt,
+      seniorityRank: membersTable.seniorityRank,
+      // Self-service fields
+      homeAddress: membersTable.homeAddress,
+      emergencyContactName: membersTable.emergencyContactName,
+      emergencyContactPhone: membersTable.emergencyContactPhone,
+      preferredLanguage: membersTable.preferredLanguage,
+      profilePhotoUrl: membersTable.profilePhotoUrl,
+      notifBulletins: membersTable.notifBulletins,
+      notifVotes: membersTable.notifVotes,
+      notifMeetings: membersTable.notifMeetings,
     })
     .from(membersTable)
     .where(eq(membersTable.id, memberId));
@@ -70,15 +80,27 @@ router.get("/profile", requireMemberAccess, asyncHandler(async (req: Request, re
 }));
 
 /**
- * PATCH /member-portal/profile — update own phone/email only
+ * PATCH /member-portal/profile — update own contact/personal info only
+ * Members CANNOT update: name, employeeId, department, shift, seniorityDate, duesStatus
  */
 router.patch("/profile", requireMemberAccess, asyncHandler(async (req: Request, res: Response) => {
   const memberId = req.session.linkedMemberId!;
-  const { phone, email } = req.body ?? {};
+  const {
+    phone, email, homeAddress, emergencyContactName, emergencyContactPhone,
+    preferredLanguage, profilePhotoUrl,
+  } = req.body ?? {};
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (phone !== undefined) updates.phone = String(phone).trim() || null;
   if (email !== undefined) updates.email = String(email).trim().toLowerCase() || null;
+  if (homeAddress !== undefined) updates.homeAddress = String(homeAddress).trim() || null;
+  if (emergencyContactName !== undefined) updates.emergencyContactName = String(emergencyContactName).trim() || null;
+  if (emergencyContactPhone !== undefined) updates.emergencyContactPhone = String(emergencyContactPhone).trim() || null;
+  if (preferredLanguage !== undefined) {
+    const lang = String(preferredLanguage).trim().toLowerCase();
+    if (["en", "fr"].includes(lang)) updates.preferredLanguage = lang;
+  }
+  if (profilePhotoUrl !== undefined) updates.profilePhotoUrl = String(profilePhotoUrl).trim() || null;
 
   if (Object.keys(updates).length === 1) {
     res.status(400).json({ error: "Nothing to update", code: "NO_CHANGES" });
@@ -87,7 +109,7 @@ router.patch("/profile", requireMemberAccess, asyncHandler(async (req: Request, 
 
   const [updated] = await db
     .update(membersTable)
-    .set(updates)
+    .set(updates as any)
     .where(eq(membersTable.id, memberId))
     .returning({
       id: membersTable.id,
@@ -96,6 +118,84 @@ router.patch("/profile", requireMemberAccess, asyncHandler(async (req: Request, 
     });
 
   res.json(updated);
+}));
+
+/**
+ * GET /member-portal/notifications — get granular notification preferences
+ */
+router.get("/notifications", requireMemberAccess, asyncHandler(async (req: Request, res: Response) => {
+  const memberId = req.session.linkedMemberId!;
+  const [member] = await db
+    .select({
+      pushEnabled: membersTable.pushEnabled,
+      notifBulletins: membersTable.notifBulletins,
+      notifVotes: membersTable.notifVotes,
+      notifMeetings: membersTable.notifMeetings,
+    })
+    .from(membersTable)
+    .where(eq(membersTable.id, memberId));
+
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({
+    ...member,
+    urgentAlerts: true, // always on — cannot be disabled
+    grievanceUpdates: true, // always on — cannot be disabled
+  });
+}));
+
+/**
+ * PATCH /member-portal/notifications — update granular notification preferences
+ */
+router.patch("/notifications", requireMemberAccess, asyncHandler(async (req: Request, res: Response) => {
+  const memberId = req.session.linkedMemberId!;
+  const { notifBulletins, notifVotes, notifMeetings, pushEnabled } = req.body ?? {};
+
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (notifBulletins !== undefined) updates.notifBulletins = Boolean(notifBulletins);
+  if (notifVotes !== undefined) updates.notifVotes = Boolean(notifVotes);
+  if (notifMeetings !== undefined) updates.notifMeetings = Boolean(notifMeetings);
+  if (pushEnabled !== undefined) updates.pushEnabled = Boolean(pushEnabled);
+
+  if (Object.keys(updates).length === 1) {
+    res.status(400).json({ error: "Nothing to update", code: "NO_CHANGES" });
+    return;
+  }
+
+  await db.update(membersTable).set(updates as any).where(eq(membersTable.id, memberId));
+  res.json({ ok: true });
+}));
+
+/**
+ * POST /member-portal/complaints/:id/followup — add follow-up note to own open complaint
+ */
+router.post("/complaints/:id/followup", requireMemberAccess, asyncHandler(async (req: Request, res: Response) => {
+  const memberId = req.session.linkedMemberId!;
+  const complaintId = parseInt(req.params.id as string, 10);
+  if (isNaN(complaintId)) { res.status(400).json({ error: "Invalid complaint ID" }); return; }
+
+  const { note } = req.body ?? {};
+  if (!note || typeof note !== "string" || !note.trim()) {
+    res.status(400).json({ error: "note is required" }); return;
+  }
+
+  // Security: verify the complaint belongs to this member and is still open
+  const [complaint] = await db
+    .select({ id: memberComplaintsTable.id, status: memberComplaintsTable.status, memberId: memberComplaintsTable.memberId })
+    .from(memberComplaintsTable)
+    .where(and(eq(memberComplaintsTable.id, complaintId), eq(memberComplaintsTable.memberId, memberId)));
+
+  if (!complaint) { res.status(404).json({ error: "Complaint not found" }); return; }
+  if (!["open", "monitoring"].includes(complaint.status)) {
+    res.status(409).json({ error: "Follow-up notes can only be added to open or monitoring complaints" }); return;
+  }
+
+  await db.update(memberComplaintsTable).set({
+    followUpNote: note.trim(),
+    followUpAt: new Date(),
+    updatedAt: new Date(),
+  } as any).where(eq(memberComplaintsTable.id, complaintId));
+
+  res.json({ ok: true });
 }));
 
 /**
@@ -115,6 +215,7 @@ router.get("/grievances", requireMemberAccess, asyncHandler(async (req: Request,
       dueDate: grievancesTable.dueDate,
       resolvedDate: grievancesTable.resolvedDate,
       accommodationRequest: grievancesTable.accommodationRequest,
+      grievanceType: grievancesTable.grievanceType,
     })
     .from(grievancesTable)
     .where(eq(grievancesTable.memberId, memberId))

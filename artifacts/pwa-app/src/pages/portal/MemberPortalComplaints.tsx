@@ -24,6 +24,8 @@ interface Complaint {
   linkedGrievanceId: number | null;
   aiRecommendation: string | null;
   aiPatternFlag: boolean | null;
+  followUpNote: string | null;
+  followUpAt: string | null;
   createdAt: string;
 }
 
@@ -280,10 +282,37 @@ function AiResultCard({ result, complaintId, category }: { result: AiResult; com
 
 // ─── Complaint Row ─────────────────────────────────────────────────────────────
 
-function MyComplaintCard({ c }: { c: Complaint }) {
+function MyComplaintCard({ c, onFollowUpSaved }: { c: Complaint; onFollowUpSaved: () => void }) {
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const [followUpText, setFollowUpText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const stat = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.open;
   const StatIcon = stat.icon;
+  const canFollowUp = ["open", "monitoring"].includes(c.status);
+
+  const handleFollowUp = async () => {
+    if (!followUpText.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/member-portal/complaints/${c.id}/followup`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: followUpText.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: "Follow-up note saved", description: "Your steward has been notified." });
+      setFollowUpText("");
+      setShowFollowUp(false);
+      onFollowUpSaved();
+    } catch {
+      toast({ title: "Failed to save note", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -296,6 +325,11 @@ function MyComplaintCard({ c }: { c: Complaint }) {
             <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">
               {CATEGORY_LABELS[c.category] ?? c.category}
             </span>
+            {c.followUpNote && (
+              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 flex items-center gap-0.5">
+                <MessageSquare className="w-2.5 h-2.5" /> Follow-up
+              </span>
+            )}
           </div>
           <p className="text-sm text-foreground leading-snug line-clamp-2">{c.description}</p>
           <p className="text-[11px] text-muted-foreground mt-1">{format(new Date(c.createdAt), "MMM d, yyyy")}</p>
@@ -304,7 +338,7 @@ function MyComplaintCard({ c }: { c: Complaint }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-border px-4 py-3 space-y-2">
+        <div className="border-t border-border px-4 py-3 space-y-3">
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{c.description}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <p className="text-[11px] text-muted-foreground">Occurred: {c.occurredDate}</p>
@@ -312,10 +346,62 @@ function MyComplaintCard({ c }: { c: Complaint }) {
           </div>
           {c.linkedGrievanceId && (
             <Link href={`/portal/grievances`}>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-primary mt-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                 <ArrowUpRight className="w-3.5 h-3.5" /> Linked to a grievance
               </div>
             </Link>
+          )}
+
+          {/* Existing follow-up note */}
+          {c.followUpNote && (
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded-lg px-3 py-2.5 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" /> Your Follow-up Note
+              </p>
+              <p className="text-sm text-foreground leading-snug">{c.followUpNote}</p>
+              {c.followUpAt && (
+                <p className="text-[10px] text-muted-foreground">{format(new Date(c.followUpAt), "MMM d, yyyy")}</p>
+              )}
+            </div>
+          )}
+
+          {/* Add / update follow-up note */}
+          {canFollowUp && !showFollowUp && (
+            <button
+              onClick={() => { setShowFollowUp(true); setFollowUpText(c.followUpNote ?? ""); }}
+              className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              {c.followUpNote ? "Update follow-up note" : "Add follow-up note"}
+            </button>
+          )}
+
+          {showFollowUp && (
+            <div className="space-y-2">
+              <textarea
+                value={followUpText}
+                onChange={(e) => setFollowUpText(e.target.value)}
+                placeholder="Add any updates or additional information for your steward…"
+                rows={3}
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleFollowUp}
+                  disabled={submitting || !followUpText.trim()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50 transition-opacity"
+                >
+                  {submitting ? <div className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                  Save Note
+                </button>
+                <button
+                  onClick={() => { setShowFollowUp(false); setFollowUpText(""); }}
+                  className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -326,6 +412,7 @@ function MyComplaintCard({ c }: { c: Complaint }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MemberPortalComplaints() {
+  const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [lastResult, setLastResult] = useState<SubmitResponse | null>(null);
 
@@ -403,7 +490,7 @@ export default function MemberPortalComplaints() {
             </div>
           ) : (
             <div className="space-y-2">
-              {complaints.map(c => <MyComplaintCard key={c.id} c={c} />)}
+              {complaints.map(c => <MyComplaintCard key={c.id} c={c} onFollowUpSaved={() => qc.invalidateQueries({ queryKey: ["my-complaints"] })} />)}
             </div>
           )}
         </section>

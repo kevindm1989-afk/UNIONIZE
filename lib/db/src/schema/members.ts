@@ -30,6 +30,16 @@ export const membersTable = pgTable("members", {
   accommodationActive: boolean("accommodation_active").notNull().default(false),
   stewardNotes: text("steward_notes"),
   cardSigned: boolean("card_signed").notNull().default(false),
+  // Member self-service fields
+  homeAddress: text("home_address"),
+  emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 50 }),
+  preferredLanguage: varchar("preferred_language", { length: 10 }).default("en"),
+  profilePhotoUrl: text("profile_photo_url"),
+  // Granular notification preferences (urgent alerts + grievance updates are always-on)
+  notifBulletins: boolean("notif_bulletins").notNull().default(true),
+  notifVotes: boolean("notif_votes").notNull().default(true),
+  notifMeetings: boolean("notif_meetings").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

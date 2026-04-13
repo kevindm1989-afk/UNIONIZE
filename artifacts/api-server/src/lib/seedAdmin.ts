@@ -634,6 +634,30 @@ export async function seedAdminUser(): Promise<void> {
   }
 }
 
+export async function ensureMemberSelfServiceColumns(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      ALTER TABLE members
+        ADD COLUMN IF NOT EXISTS home_address TEXT,
+        ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en',
+        ADD COLUMN IF NOT EXISTS profile_photo_url TEXT,
+        ADD COLUMN IF NOT EXISTS notif_bulletins BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS notif_votes BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS notif_meetings BOOLEAN NOT NULL DEFAULT TRUE
+    `);
+    await client.query(`
+      ALTER TABLE member_complaints
+        ADD COLUMN IF NOT EXISTS follow_up_note TEXT,
+        ADD COLUMN IF NOT EXISTS follow_up_at TIMESTAMPTZ
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureDocumentVersioningColumns(): Promise<void> {
   const client = await pool.connect();
   try {
