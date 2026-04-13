@@ -80,6 +80,7 @@ export default function MemberCreate() {
         seniorityDate: values.seniorityDate || undefined,
         shift: (values.shift as "days" | "afternoons" | "nights" | "rotating" | undefined) || undefined,
         duesStatus: (values.duesStatus as "current" | "arrears" | "exempt" | undefined) || "current",
+        cardSigned: values.cardSigned,
         signedAt: values.cardSigned ? now : undefined,
         notes: values.notes || undefined,
         isActive: true,

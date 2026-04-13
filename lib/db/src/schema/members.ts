@@ -29,6 +29,7 @@ export const membersTable = pgTable("members", {
   seniorityRank: integer("seniority_rank"),
   accommodationActive: boolean("accommodation_active").notNull().default(false),
   stewardNotes: text("steward_notes"),
+  cardSigned: boolean("card_signed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

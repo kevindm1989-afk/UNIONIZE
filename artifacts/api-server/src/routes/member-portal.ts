@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, membersTable, grievancesTable, announcementsTable, usersTable, disciplineRecordsTable } from "@workspace/db";
+import { db, pool, membersTable, grievancesTable, announcementsTable, usersTable, disciplineRecordsTable } from "@workspace/db";
 import { eq, desc, asc } from "drizzle-orm";
 import { ai } from "../lib/gemini/client";
 import { GEMINI_MODEL, GEMINI_MAX_TOKENS } from "../lib/anthropic/constants";
@@ -167,22 +167,40 @@ router.post("/grievances", requireMemberAccess, grievanceCreateLimiter, asyncHan
 }));
 
 /**
- * GET /member-portal/bulletins — bulletin feed (active announcements)
+ * GET /member-portal/bulletins — active bulletin feed (published, not expired)
  */
-router.get("/bulletins", requireMemberAccess, asyncHandler(async (_req: Request, res: Response) => {
-  const bulletins = await db
-    .select({
-      id: announcementsTable.id,
-      title: announcementsTable.title,
-      content: announcementsTable.content,
-      category: announcementsTable.category,
-      isUrgent: announcementsTable.isUrgent,
-      publishedAt: announcementsTable.publishedAt,
-    })
-    .from(announcementsTable)
-    .orderBy(desc(announcementsTable.publishedAt))
-    .limit(50);
-  res.json(bulletins);
+router.get("/bulletins", requireMemberAccess, asyncHandler(async (req: Request, res: Response) => {
+  const memberId = req.session.linkedMemberId ?? null;
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT a.id, a.title, a.content, a.category, a.is_urgent, a.urgency_level, a.published_at,
+              a.expires_at,
+              EXISTS(SELECT 1 FROM bulletin_acknowledgements ba WHERE ba.announcement_id = a.id AND ba.member_id = $1) AS is_acknowledged,
+              (SELECT response FROM bulletin_responses br WHERE br.announcement_id = a.id AND br.member_id = $1 LIMIT 1) AS my_response
+       FROM announcements a
+       WHERE (a.is_published IS NULL OR a.is_published = TRUE)
+         AND (a.expires_at IS NULL OR a.expires_at > NOW())
+       ORDER BY a.published_at DESC
+       LIMIT 60`,
+      [memberId]
+    );
+    res.json(result.rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      content: r.content,
+      category: r.category,
+      isUrgent: r.is_urgent,
+      urgencyLevel: r.urgency_level ?? "normal",
+      publishedAt: r.published_at?.toISOString() ?? new Date().toISOString(),
+      expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : null,
+      isMobilization: ["job_action", "strike_action", "action"].includes(r.category),
+      isAcknowledged: r.is_acknowledged ?? false,
+      myResponse: r.my_response ?? null,
+    })));
+  } finally {
+    client.release();
+  }
 }));
 
 /**

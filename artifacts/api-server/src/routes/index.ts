@@ -28,6 +28,7 @@ import accessRequestsRouter from "./access-requests";
 import bargainingRouter from "./bargaining";
 import complaintsRouter from "./complaints";
 import grievanceAlertsRouter, { runDailyAlertJob } from "./grievance-alerts";
+import { runScheduledBulletinJob } from "./announcements";
 import { requirePermission, requireSteward } from "../lib/permissions";
 
 // Init VAPID keys after the DB startup chain completes
@@ -39,6 +40,13 @@ setTimeout(() => {
   runDailyAlertJob().catch(() => {});
   setInterval(() => runDailyAlertJob().catch(() => {}), DAILY_MS);
 }, 45_000);
+
+// Scheduled bulletin auto-publish — runs 60s after startup then every 60s
+const BULLETIN_INTERVAL_MS = 60 * 1000;
+setTimeout(() => {
+  runScheduledBulletinJob().catch(() => {});
+  setInterval(() => runScheduledBulletinJob().catch(() => {}), BULLETIN_INTERVAL_MS);
+}, 60_000);
 
 const router: IRouter = Router();
 

@@ -493,6 +493,56 @@ export async function ensureAdvancedFeatureTables(): Promise<void> {
       );
     `);
 
+    // Phase 2 Schema Enhancements
+    // members: seniority_rank, accommodation_active, steward_notes, card_signed
+    await client.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS seniority_rank INTEGER`);
+    await client.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS accommodation_active BOOLEAN NOT NULL DEFAULT FALSE`);
+    await client.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS steward_notes TEXT`);
+    await client.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS card_signed BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // grievances: grievance_type, incident_date, remedy_requested, outcome
+    await client.query(`ALTER TABLE grievances ADD COLUMN IF NOT EXISTS grievance_type VARCHAR(30)`);
+    await client.query(`ALTER TABLE grievances ADD COLUMN IF NOT EXISTS incident_date DATE`);
+    await client.query(`ALTER TABLE grievances ADD COLUMN IF NOT EXISTS remedy_requested TEXT`);
+    await client.query(`ALTER TABLE grievances ADD COLUMN IF NOT EXISTS outcome VARCHAR(20) DEFAULT 'pending'`);
+
+    // meetings: agenda_items, attendance_data
+    await client.query(`ALTER TABLE meetings ADD COLUMN IF NOT EXISTS agenda_items JSONB DEFAULT '[]'`);
+    await client.query(`ALTER TABLE meetings ADD COLUMN IF NOT EXISTS attendance_data JSONB DEFAULT '{}'`);
+
+    // documents: steward_only
+    await client.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS steward_only BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // Bulletin scheduling + expiry columns
+    await client.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ`);
+    await client.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT TRUE`);
+    await client.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+
+    // Bulletin Acknowledgements
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bulletin_acknowledgements (
+        id SERIAL PRIMARY KEY,
+        announcement_id INTEGER NOT NULL,
+        member_id INTEGER NOT NULL,
+        acknowledged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (announcement_id, member_id)
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_bulletin_ack_ann ON bulletin_acknowledgements(announcement_id)`);
+
+    // Bulletin Responses (mobilization: I'm In / Need More Info)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bulletin_responses (
+        id SERIAL PRIMARY KEY,
+        announcement_id INTEGER NOT NULL,
+        member_id INTEGER NOT NULL,
+        response TEXT NOT NULL,
+        responded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (announcement_id, member_id)
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_bulletin_resp_ann ON bulletin_responses(announcement_id)`);
+
     // Arbitration Referral Packages
     await client.query(`
       CREATE TABLE IF NOT EXISTS arbitration_packages (

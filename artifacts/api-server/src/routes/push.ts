@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
 import webpush from "web-push";
 import { db, pushSubscriptionsTable, pool } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { asyncHandler } from "../lib/asyncHandler";
 
@@ -67,6 +67,30 @@ export async function sendPushToAll(payload: { title: string; body: string; tag?
     if (failed > 0) logger.warn({ failed }, "Some push notifications failed");
   } catch (err) {
     logger.error({ err }, "sendPushToAll failed");
+  }
+}
+
+// Fire-and-forget push to specific users by userId
+export async function sendPushToUsers(userIds: number[], payload: { title: string; body: string; tag?: string; url?: string }) {
+  if (!vapidConfigured || !userIds.length) return;
+  try {
+    const subs = await db.select().from(pushSubscriptionsTable)
+      .where(inArray(pushSubscriptionsTable.userId, userIds));
+    const notification = JSON.stringify(payload);
+    await Promise.allSettled(
+      subs.map((sub) =>
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          notification
+        ).catch(async (err: any) => {
+          if (err.statusCode === 410) {
+            await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, sub.id));
+          }
+        })
+      )
+    );
+  } catch (err) {
+    logger.error({ err }, "sendPushToUsers failed");
   }
 }
 

@@ -48,6 +48,7 @@ const privilegedUpdateFields = {
   seniorityRank:       z.number().int().positive().nullable().optional(),
   accommodationActive: z.boolean().optional(),
   stewardNotes:        z.string().max(10000).nullable().optional(),
+  cardSigned:          z.boolean().optional(),
 };
 
 const PatchMemberBodySchema = z.object({
@@ -245,6 +246,7 @@ router.patch("/:id", requirePermission("members.edit"), asyncHandler(async (req,
   if (d.seniorityRank !== undefined)      updates.seniorityRank = d.seniorityRank;
   if (d.accommodationActive !== undefined) updates.accommodationActive = d.accommodationActive;
   if (d.stewardNotes !== undefined)       updates.stewardNotes = d.stewardNotes;
+  if (d.cardSigned !== undefined)         (updates as any).cardSigned = d.cardSigned;
 
   const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, paramParsed.data.id));
 
@@ -370,7 +372,7 @@ function formatMember(m: typeof membersTable.$inferSelect, includePrivileged = t
     smsEnabled: m.smsEnabled ?? false,
     emailEnabled: m.emailEnabled ?? true,
     pushEnabled: m.pushEnabled ?? true,
-    cardSigned: !!m.signedAt,
+    cardSigned: (m as any).cardSigned ?? !!m.signedAt,
     signedAt: m.signedAt?.toISOString() ?? null,
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
