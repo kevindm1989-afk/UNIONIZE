@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import {
   useListAnnouncements,
@@ -9,7 +9,7 @@ import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Bell, ChevronRight, AlertTriangle, Siren } from "lucide-react";
+import { Bell, ChevronRight, AlertTriangle, Siren, X } from "lucide-react";
 
 const categories = [
   { id: "all", label: "All" },
@@ -83,8 +83,60 @@ function EmergencyBanner({ item }: { item: Announcement }) {
   );
 }
 
+function EmergencyOverlay({ item, onDismiss }: { item: Announcement; onDismiss: () => void }) {
+  const isStrike = item.category === "strike_action";
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6"
+      style={{ background: isStrike ? "rgba(153,0,0,0.97)" : "rgba(194,65,12,0.97)" }}
+    >
+      <div className="w-full max-w-sm flex flex-col items-center text-white text-center">
+        <div className={cn(
+          "w-20 h-20 rounded-full flex items-center justify-center mb-6",
+          "bg-white/20 border-4 border-white/30",
+          isStrike ? "animate-pulse" : ""
+        )}>
+          {isStrike
+            ? <Siren className="w-10 h-10" />
+            : <AlertTriangle className="w-10 h-10" />}
+        </div>
+
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-75 mb-2">
+          {isStrike ? "⚡ Strike Action Alert" : "⚠️ Safety Alert"}
+        </span>
+
+        <h1 className="text-2xl font-black leading-tight mb-4">{item.title}</h1>
+
+        <p className="text-sm opacity-80 leading-relaxed mb-8 max-w-[280px]">
+          {item.content.length > 200 ? item.content.slice(0, 200) + "…" : item.content}
+        </p>
+
+        <p className="text-xs opacity-60 mb-8">
+          Posted {format(new Date(item.publishedAt), "MMM d, yyyy · h:mm a")}
+        </p>
+
+        <Link href={`/bulletins/${item.id}`} onClick={onDismiss} className="w-full mb-3">
+          <div className="w-full py-4 rounded-2xl bg-white font-black text-base tracking-wide"
+            style={{ color: isStrike ? "#991b1b" : "#9a3412" }}>
+            Read Full Bulletin
+          </div>
+        </Link>
+
+        <button
+          onClick={onDismiss}
+          className="flex items-center gap-2 text-sm font-bold opacity-70 hover:opacity-100 transition-opacity py-3"
+        >
+          <X className="w-4 h-4" />
+          Acknowledge & Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Bulletins() {
   const [filter, setFilter] = useState("all");
+  const [overlayDismissed, setOverlayDismissed] = useState(false);
 
   const categoryParam = filter === "all" ? undefined : (filter as ListAnnouncementsParams["category"]);
   const { data: announcements, isLoading } = useListAnnouncements(
@@ -102,8 +154,36 @@ export default function Bulletins() {
     (a) => !a.isUrgent && a.urgencyLevel !== "critical" && a.category !== "safety_alert" && a.category !== "strike_action"
   ) ?? [];
 
+  // Determine which critical item to show in the overlay (most recent, strike takes priority)
+  const overlayItem = !overlayDismissed && criticalItems.length > 0
+    ? (criticalItems.find(a => a.category === "strike_action") ?? criticalItems[0])
+    : null;
+
+  // Check sessionStorage so repeated visits in same session don't re-show
+  const [checkedSession, setCheckedSession] = useState(false);
+  useEffect(() => {
+    if (!checkedSession && criticalItems.length > 0) {
+      setCheckedSession(true);
+      const key = `emergency_ack_${criticalItems[0].id}`;
+      if (sessionStorage.getItem(key)) {
+        setOverlayDismissed(true);
+      }
+    }
+  }, [criticalItems, checkedSession]);
+
+  const handleDismiss = () => {
+    if (criticalItems.length > 0) {
+      sessionStorage.setItem(`emergency_ack_${criticalItems[0].id}`, "1");
+    }
+    setOverlayDismissed(true);
+  };
+
   return (
     <MobileLayout>
+      {overlayItem && (
+        <EmergencyOverlay item={overlayItem} onDismiss={handleDismiss} />
+      )}
+
       <div className="p-4 sm:p-5 space-y-5 pb-8">
         <header>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Bulletins</h1>

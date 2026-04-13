@@ -37,6 +37,8 @@ import MemberPortalBulletins from "@/pages/portal/MemberPortalBulletins";
 import MemberPortalDiscipline from "@/pages/portal/MemberPortalDiscipline";
 import MemberPortalSignCard from "@/pages/portal/MemberPortalSignCard";
 import MemberPortalCbaAssistant from "@/pages/portal/MemberPortalCbaAssistant";
+import MemberPortalRights from "@/pages/portal/MemberPortalRights";
+import MemberRights from "@/pages/MemberRights";
 
 export interface AuthUser {
   id: number;
@@ -110,6 +112,7 @@ function StewardRouter() {
       <Route path="/meetings/:id" component={MeetingDetail} />
 
       <Route path="/assistant" component={CbaAssistant} />
+      <Route path="/rights" component={MemberRights} />
 
       <Route path="/admin" component={Admin} />
 
@@ -128,6 +131,7 @@ function MemberPortalRouter() {
       <Route path="/portal/grievances" component={MemberPortalGrievances} />
       <Route path="/portal/bulletins" component={MemberPortalBulletins} />
       <Route path="/portal/discipline" component={MemberPortalDiscipline} />
+      <Route path="/portal/rights" component={MemberPortalRights} />
       <Route path="/portal/assistant" component={MemberPortalCbaAssistant} />
       <Route path="/portal/sign-card" component={MemberPortalSignCard} />
       <Route path="/" component={MemberPortalProfile} />

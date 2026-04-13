@@ -291,4 +291,90 @@ router.post("/ai/chat", requireMemberAccess, aiChatLimiter, async (req: Request,
   }
 });
 
+// ─── Member Rights Explainer ──────────────────────────────────────────────────
+
+const RIGHTS_SYSTEM_PROMPT = `You are a member rights assistant for Unifor Local 1285, a Canadian union operating under Ontario labor law. When a member asks a question about their rights, answer clearly and simply using: 1) The Unifor Local 1285 collective agreement as the primary source, 2) The Ontario Employment Standards Act as a secondary source. Structure every answer as: Direct Answer (1-2 sentences), Collective Agreement Reference (cite the specific article), ESA Reference (only if applicable). Use plain language a warehouse worker can understand. Maximum 3 paragraphs. Always end with: 'If this situation is serious or ongoing, contact your steward immediately.' Never provide legal advice — only explain what the collective agreement and ESA say.
+
+Here is the full Collective Agreement text for reference:
+---
+${cbaText}
+---
+
+CRITICAL FORMATTING RULES:
+- Return ONLY plain text with labeled sections. No markdown, no JSON, no asterisks, no backticks.
+- Begin immediately with DIRECT_ANSWER: — no preamble.
+- Use exactly these three labels in this order.`;
+
+const rightsSchema = z.object({
+  question: z.string().min(3).max(2000),
+});
+
+function extractRightsSection(text: string, label: string): string {
+  const idx = text.indexOf(label + ":");
+  if (idx === -1) return "";
+  const start = idx + label.length + 1;
+  const rest = text.slice(start);
+  const nextLabel = rest.search(/\n[A-Z_]{3,}:/);
+  return (nextLabel === -1 ? rest : rest.slice(0, nextLabel)).trim();
+}
+
+router.post("/rights", aiChatLimiter, asyncHandler(async (req: Request, res: Response) => {
+  const parsed = rightsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Question must be between 3 and 2000 characters." });
+    return;
+  }
+
+  const { question } = parsed.data;
+
+  const userPrompt = `Member question: ${question}
+
+Answer using ONLY these plain text labeled sections in this exact order:
+
+DIRECT_ANSWER:
+A clear, plain-language answer in 1-2 sentences.
+
+CBA_REFERENCE:
+The specific Collective Agreement article(s) that apply. Include the article number and a brief quote or summary.
+
+ESA_REFERENCE:
+The Ontario ESA section that applies, if relevant. If the ESA is not relevant to this question, write: Not applicable.`;
+
+  let rawText = "";
+  try {
+    const result = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      config: {
+        systemInstruction: RIGHTS_SYSTEM_PROMPT,
+        maxOutputTokens: 1024,
+      },
+    });
+    rawText = result.text ?? "";
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log.error({ err, model: GEMINI_MODEL }, "Member rights AI call failed");
+    res.status(502).json({ error: `AI unavailable: ${msg}` });
+    return;
+  }
+
+  if (!rawText.trim()) {
+    res.status(502).json({ error: "AI returned an empty response. Please try again." });
+    return;
+  }
+
+  const directAnswer = extractRightsSection(rawText, "DIRECT_ANSWER") || rawText.trim();
+  const cbaReference = extractRightsSection(rawText, "CBA_REFERENCE");
+  const esaRaw = extractRightsSection(rawText, "ESA_REFERENCE");
+  const esaReference = esaRaw && !esaRaw.toLowerCase().includes("not applicable") ? esaRaw : null;
+
+  res.json({
+    question,
+    directAnswer,
+    cbaReference,
+    esaReference,
+    disclaimer: "If this situation is serious or ongoing, contact your steward immediately.",
+  });
+}));
+
 export default router;

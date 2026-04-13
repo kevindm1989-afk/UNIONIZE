@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff, Sun, Moon, BarChart2, MapPin, Vote } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff, Sun, Moon, BarChart2, MapPin, Vote, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, usePermissions } from "@/App";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -138,6 +138,14 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                     >
                       <Vote className="w-4 h-4 text-primary" />
                       Polls
+                    </Link>
+                    <Link
+                      href="/rights"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <Scale className="w-4 h-4 text-primary" />
+                      Member Rights
                     </Link>
                   </div>
 
