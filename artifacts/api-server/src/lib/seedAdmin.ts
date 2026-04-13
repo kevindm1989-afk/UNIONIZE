@@ -634,6 +634,37 @@ export async function seedAdminUser(): Promise<void> {
   }
 }
 
+export async function ensureSeniorityDisputeTables(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS seniority_disputes (
+        id SERIAL PRIMARY KEY,
+        dispute_type TEXT NOT NULL,
+        occurred_at DATE NOT NULL,
+        member_ids JSONB NOT NULL DEFAULT '[]',
+        member_names JSONB NOT NULL DEFAULT '[]',
+        description TEXT NOT NULL,
+        management_action TEXT NOT NULL,
+        analysis JSONB,
+        violation_level TEXT,
+        recommendation TEXT,
+        pattern_flag BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_sd_type_created ON seniority_disputes(dispute_type, created_at);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_sd_created_by ON seniority_disputes(created_by);
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureElectionTables(): Promise<void> {
   const client = await pool.connect();
   try {

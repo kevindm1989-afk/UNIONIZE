@@ -128,6 +128,45 @@ All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUM
 Mobilization categories (show I'm In / Need More Info): `job_action`, `strike_action`, `action`
 Critical/emergency categories (full-screen overlay): `safety_alert`, `strike_action`, `job_action`
 
+## Seniority Dispute Tool
+
+Steward-only AI-powered tool at `/seniority-disputes`. Analyzes whether correct seniority order was followed for 7 dispute types.
+
+### Dispute Types
+`scheduling`, `overtime`, `shift_bid`, `layoff`, `recall`, `promotion`, `other`
+
+### Database
+- **seniority_disputes** — `id`, `dispute_type`, `occurred_at`, `member_ids` (jsonb), `member_names` (jsonb), `description`, `management_action`, `analysis` (jsonb — full Gemini response), `violation_level`, `recommendation`, `pattern_flag` (bool — true if 3+ same type in 60 days), `created_by`, `created_at`
+
+### API Endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/seniority-disputes/analyze` | AI analysis (Gemini flash-lite), does NOT save |
+| `GET` | `/api/seniority-disputes` | List all saved disputes |
+| `POST` | `/api/seniority-disputes` | Save a dispute + analysis |
+| `GET` | `/api/seniority-disputes/:id` | Get one dispute |
+| `DELETE` | `/api/seniority-disputes/:id` | Delete a dispute from history |
+
+### Analysis Response Shape
+```json
+{
+  "correctSeniorityOrder": [{ "name": "...", "seniorityDate": "...", "seniorityRank": 1, "positionInOrder": 1 }],
+  "violationOccurred": true,
+  "violationLevel": "Clear Violation",
+  "articleReference": "Article 9.04 — Overtime",
+  "explanation": "...",
+  "recommendation": "File Grievance",
+  "recommendationRationale": "...",
+  "grievanceSummary": "pre-filled text for grievance drafting assistant"
+}
+```
+
+### Key Behaviors
+- Pattern detection: if 3+ same-type disputes in 60 days → `pattern_flag=true` + banner shown
+- "Send to Grievance Drafting Assistant" button (shown when `recommendation === "File Grievance"`) → populates `sessionStorage("grievance_prefill")` with `_fromSeniority: true` and navigates to `/grievances/new`
+- GrievanceCreate handles `_fromSeniority` identically to `_fromDetector` (pre-fills AI intake form)
+- Navigation: user menu dropdown → "Seniority Disputes" (Gavel icon)
+
 ## Required Secrets
 
 | Secret | Notes |

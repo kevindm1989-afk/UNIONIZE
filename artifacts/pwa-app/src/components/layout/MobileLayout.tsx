@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff, Sun, Moon, BarChart2, MapPin, Vote, Scale, Handshake, MessageSquareWarning, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Bell, Bot, FolderOpen, Plus, LogOut, ChevronDown, ShieldCheck, CalendarDays, BellRing, BellOff, Sun, Moon, BarChart2, MapPin, Vote, Scale, Handshake, MessageSquareWarning, Trophy, Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, usePermissions } from "@/App";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -47,6 +47,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
     if (location.startsWith("/coverage")) return "coverage";
     if (location.startsWith("/polls")) return "polls";
     if (location.startsWith("/elections")) return "elections";
+    if (location.startsWith("/seniority-disputes")) return "seniority-disputes";
     return "dashboard";
   };
 
@@ -147,6 +148,14 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                     >
                       <Trophy className="w-4 h-4 text-primary" />
                       Elections & Votes
+                    </Link>
+                    <Link
+                      href="/seniority-disputes"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <Gavel className="w-4 h-4 text-primary" />
+                      Seniority Disputes
                     </Link>
                     <Link
                       href="/rights"

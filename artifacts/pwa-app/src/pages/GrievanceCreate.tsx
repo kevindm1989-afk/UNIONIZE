@@ -126,7 +126,7 @@ export default function GrievanceCreate() {
       if (!raw) return;
       sessionStorage.removeItem("grievance_prefill");
       const prefill = JSON.parse(raw);
-      if (prefill._fromDetector) {
+      if (prefill._fromDetector || prefill._fromSeniority) {
         setAiIntake((prev) => ({
           ...prev,
           whatHappened: prefill.whatHappened ?? prev.whatHappened,
