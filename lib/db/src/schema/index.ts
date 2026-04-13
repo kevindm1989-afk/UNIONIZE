@@ -19,3 +19,4 @@ export * from "./discipline_records";
 export * from "./steward_coverage";
 export * from "./polls";
 export * from "./onboarding";
+export * from "./bargaining_reports";

@@ -39,6 +39,7 @@ import MemberPortalSignCard from "@/pages/portal/MemberPortalSignCard";
 import MemberPortalCbaAssistant from "@/pages/portal/MemberPortalCbaAssistant";
 import MemberPortalRights from "@/pages/portal/MemberPortalRights";
 import MemberRights from "@/pages/MemberRights";
+import BargainingAssistant from "@/pages/BargainingAssistant";
 
 export interface AuthUser {
   id: number;
@@ -113,6 +114,7 @@ function StewardRouter() {
 
       <Route path="/assistant" component={CbaAssistant} />
       <Route path="/rights" component={MemberRights} />
+      <Route path="/bargaining" component={BargainingAssistant} />
 
       <Route path="/admin" component={Admin} />
 
