@@ -191,7 +191,7 @@ router.post(
     const client = await pool.connect();
     try {
       const entryResult = await client.query<Record<string, unknown>>(
-        `SELECT e.*, m.first_name, m.last_name, m.department AS member_department
+        `SELECT e.*, m.name AS member_name, m.department AS member_department
          FROM member_journal_entries e
          JOIN members m ON m.id = e.member_id
          WHERE e.id = $1`,
@@ -213,7 +213,7 @@ router.post(
       // Auto-create complaint record
       const incidentType = entry.incident_type as string;
       const category = INCIDENT_TO_CATEGORY[incidentType] ?? "other";
-      const memberName = `${entry.first_name} ${entry.last_name}`;
+      const memberName = (entry.member_name as string) ?? "Member";
       const complaintDescription = `[Member Journal — ${INCIDENT_TYPE_LABELS[incidentType] ?? incidentType}] ${(entry.description as string).slice(0, 1000)}`;
 
       try {
@@ -283,12 +283,12 @@ router.get(
         [memberId]
       );
 
-      const memberResult = await client.query<{ first_name: string; last_name: string; employee_id: string }>(
-        `SELECT first_name, last_name, employee_id FROM members WHERE id = $1`,
+      const memberResult = await client.query<{ name: string; employee_id: string }>(
+        `SELECT name, employee_id FROM members WHERE id = $1`,
         [memberId]
       );
       const member = memberResult.rows[0];
-      const memberName = member ? `${member.first_name} ${member.last_name}` : "Member";
+      const memberName = member?.name ?? "Member";
       const employeeId = member?.employee_id ?? "";
 
       const html = buildExportHtml(memberName, employeeId, entriesResult.rows as Record<string, any>[], "all");
@@ -328,12 +328,12 @@ router.get(
       const entry = entryResult.rows[0] as Record<string, any>;
       if (entry.member_id !== memberId) { res.status(403).json({ error: "Access denied" }); return; }
 
-      const memberResult = await client.query<{ first_name: string; last_name: string; employee_id: string }>(
-        `SELECT first_name, last_name, employee_id FROM members WHERE id = $1`,
+      const memberResult = await client.query<{ name: string; employee_id: string }>(
+        `SELECT name, employee_id FROM members WHERE id = $1`,
         [memberId]
       );
       const member = memberResult.rows[0];
-      const memberName = member ? `${member.first_name} ${member.last_name}` : "Member";
+      const memberName = member?.name ?? "Member";
       const employeeId = member?.employee_id ?? "";
 
       const html = buildExportHtml(memberName, employeeId, [entry], "single");

@@ -12,6 +12,7 @@ import settingsRouter from "./settings";
 import auditLogsRouter from "./audit-logs";
 import grievanceNotesRouter from "./grievance-notes";
 import memberPortalRouter from "./member-portal";
+import memberJournalRouter from "./member-journal";
 import meetingsRouter from "./meetings";
 import pushRouter, { initVapid } from "./push";
 import journalRouter from "./journal";
@@ -69,6 +70,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 router.use(requireAuth);
 
 router.use("/member-portal", memberPortalRouter);
+router.use("/member-journal", memberJournalRouter);
 router.use("/members", requirePermission("members.view"), membersRouter);
 router.use("/grievances/alerts", requirePermission("grievances.view"), grievanceAlertsRouter);
 router.use("/grievances", requirePermission("grievances.view"), grievancesRouter);

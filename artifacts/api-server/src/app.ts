@@ -29,6 +29,7 @@ import {
   ensureSeniorityDisputeTables,
   ensureDocumentVersioningColumns,
   ensureMemberSelfServiceColumns,
+  ensureMemberJournalTables,
   seedDefaultPermissions,
 } from "./lib/seedAdmin";
 const PgStore = connectPgSimple(session);
@@ -123,6 +124,7 @@ ensureSessionTable()
   .then(() => ensureSeniorityDisputeTables())
   .then(() => ensureDocumentVersioningColumns())
   .then(() => ensureMemberSelfServiceColumns())
+  .then(() => ensureMemberJournalTables())
   .then(() => seedAdminUser())
   .then(() => seedDefaultPermissions())
   .catch((err) => logger.error({ err }, "Startup tasks failed"));

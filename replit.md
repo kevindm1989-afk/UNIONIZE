@@ -36,8 +36,11 @@ Mobile PWA for Unifor Local 1285 stewards to manage member records, track grieva
 - **bulletin_acknowledgements** — tracks per-member bulletin reads
 - **bulletin_responses** — tracks mobilization responses (`im_in`/`need_info`)
 - **grievance_notes**, **audit_logs**, **local_settings**, **access_requests**, **member_files**, **discipline_records**, **push_subscriptions**
+- **member_journal_entries** — member-private incident log (`incident_type`, `incident_date`, `incident_time`, `shift`, `location`, `department`, `description`, `persons_involved`, `management_documentation_issued`, `union_rep_present`, `steward_notified`, `urgent`, `shared`, `shared_at`, `locked`); created via `ensureMemberJournalTables()`
+- **member_journal_addendums** — addendums to locked journal entries (`journal_entry_id`, `content`); created via same migration
+- **member_complaints** — `source` (TEXT) and `journal_entry_id` (INT) columns added for journal-sourced complaints
 
-All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUMN IF NOT EXISTS` on startup.
+All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUMN IF NOT EXISTS` on startup (new journal tables via `ensureMemberJournalTables()`).
 
 ## API Routes (key)
 
@@ -52,6 +55,13 @@ All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUM
 - `GET /api/announcements/:id/responses` — steward: mobilization response breakdown
 - `POST /api/announcements/:id/notify-unacknowledged` — send push to unacked members
 - `GET /api/member-portal/bulletins` — member feed (isAcknowledged, myResponse, uses `linkedMemberId ?? userId`)
+- `GET /api/member-journal` — list own journal entries with addendums (member-only, requires linkedMemberId)
+- `POST /api/member-journal` — create locked journal entry (member-only)
+- `POST /api/member-journal/:id/addendum` — add addendum to locked entry (member-only)
+- `POST /api/member-journal/:id/share` — one-way share to steward; auto-creates complaint, sends push if urgent (member-only)
+- `GET /api/member-journal/:id/export` — export single entry as print-ready HTML (member-only)
+- `GET /api/member-journal/export` — export all own entries as print-ready HTML (member-only)
+- `DELETE /api/member-journal/:id` — delete unshared entry only (member-only)
 
 ## Key Bug Fixes
 
@@ -73,6 +83,7 @@ All schema additions done via `ensureAdvancedFeatureTables()` raw SQL `ADD COLUM
 - **Documents** (`/documents`) — search bar, stewardOnly badge/toggle
 - **CbaAssistant** (`/assistant`) — quick-action suggestion chips, Gemini AI chat about CBA
 - **Elections** (`/elections`) — Elections & Vote Tracker (Active/Closed tabs, Cast Ballot, Live Tally, Close Vote, Certificate)
+- **MemberPortalJournal** (`/portal/journal`) — private incident journal; list view + expandable cards, new-entry form, addendum, share-with-steward (one-way, confirm dialog), export single/all as print HTML, offline IndexedDB drafts with "Pending sync" badge, 25-day statute of limitations nudge (yellow banner on unshared entries)
 
 ## Election & Vote Tracker
 

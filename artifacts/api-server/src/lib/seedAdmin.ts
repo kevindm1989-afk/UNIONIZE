@@ -684,6 +684,61 @@ export async function ensureDocumentVersioningColumns(): Promise<void> {
   }
 }
 
+export async function ensureMemberJournalTables(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS member_journal_entries (
+        id SERIAL PRIMARY KEY,
+        member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+        incident_type TEXT NOT NULL CHECK (incident_type IN ('harassment','denied_rights','scheduling','discipline','overtime','seniority','other')),
+        incident_date DATE NOT NULL,
+        incident_time TIME,
+        shift TEXT NOT NULL CHECK (shift IN ('days','afternoons','nights','rotating')),
+        location TEXT NOT NULL,
+        department TEXT,
+        description TEXT NOT NULL,
+        persons_involved TEXT,
+        management_documentation_issued BOOLEAN NOT NULL DEFAULT FALSE,
+        union_rep_present BOOLEAN NOT NULL DEFAULT FALSE,
+        steward_notified BOOLEAN NOT NULL DEFAULT FALSE,
+        attachment_url TEXT,
+        urgent BOOLEAN NOT NULL DEFAULT FALSE,
+        shared BOOLEAN NOT NULL DEFAULT FALSE,
+        shared_at TIMESTAMPTZ,
+        locked BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_mje_member_id ON member_journal_entries(member_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_mje_created_at ON member_journal_entries(created_at DESC)
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS member_journal_addendums (
+        id SERIAL PRIMARY KEY,
+        journal_entry_id INTEGER NOT NULL REFERENCES member_journal_entries(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_mja_entry_id ON member_journal_addendums(journal_entry_id)
+    `);
+    // Add source + journal_entry_id columns to member_complaints for journal-sourced records
+    await client.query(`
+      ALTER TABLE member_complaints
+        ADD COLUMN IF NOT EXISTS source TEXT,
+        ADD COLUMN IF NOT EXISTS journal_entry_id INTEGER
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function ensureSeniorityDisputeTables(): Promise<void> {
   const client = await pool.connect();
   try {

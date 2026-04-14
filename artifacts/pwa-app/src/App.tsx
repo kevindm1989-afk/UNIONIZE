@@ -42,6 +42,7 @@ import MemberPortalSignCard from "@/pages/portal/MemberPortalSignCard";
 import MemberPortalCbaAssistant from "@/pages/portal/MemberPortalCbaAssistant";
 import MemberPortalRights from "@/pages/portal/MemberPortalRights";
 import MemberPortalComplaints from "@/pages/portal/MemberPortalComplaints";
+import MemberPortalJournal from "@/pages/portal/MemberPortalJournal";
 import MemberRights from "@/pages/MemberRights";
 import BargainingAssistant from "@/pages/BargainingAssistant";
 import Complaints from "@/pages/Complaints";
@@ -143,6 +144,7 @@ function MemberPortalRouter() {
       <Route path="/portal/rights" component={MemberPortalRights} />
       <Route path="/portal/complaints" component={MemberPortalComplaints} />
       <Route path="/portal/assistant" component={MemberPortalCbaAssistant} />
+      <Route path="/portal/journal" component={MemberPortalJournal} />
       <Route path="/portal/sign-card" component={MemberPortalSignCard} />
       <Route path="/" component={MemberPortalProfile} />
       <Route component={MemberPortalProfile} />
