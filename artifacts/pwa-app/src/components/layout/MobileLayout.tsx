@@ -98,7 +98,7 @@ export function MobileLayout({ children }: { children: React.ReactNode }) {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowUserMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-xl shadow-xl min-w-[180px] overflow-y-auto max-h-[calc(100dvh-4rem)]">
                   <div className="px-3 py-2.5 border-b border-border">
                     <p className="text-xs font-bold text-foreground">{user.displayName}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">@{user.username}</p>
