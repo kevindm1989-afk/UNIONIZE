@@ -77,6 +77,14 @@ export function MemberPortalLayout({ children }: { children: React.ReactNode }) 
                       <Trophy className="w-4 h-4 text-primary" />
                       Elections & Votes
                     </Link>
+                    <Link
+                      href="/portal/discipline"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      <ShieldAlert className="w-4 h-4 text-primary" />
+                      My Discipline Record
+                    </Link>
                   </div>
                   <div className="border-t border-border">
                     <button
