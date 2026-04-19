@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -192,6 +193,9 @@ export default function MemberDetail() {
   const [cardSigned, setCardSigned] = useState(false);
   const [accommodationActive, setAccommodationActive] = useState(false);
   const [stewardNotes, setStewardNotes] = useState("");
+  const [engagementLevel, setEngagementLevel] = useState("unknown");
+  const [shopFloorLeader, setShopFloorLeader] = useState(false);
+  const [organizingNotes, setOrganizingNotes] = useState("");
 
   // Files state
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -407,6 +411,9 @@ export default function MemberDetail() {
       setCardSigned((member as any).cardSigned ?? false);
       setAccommodationActive((member as any).accommodationActive ?? false);
       setStewardNotes((member as any).stewardNotes ?? "");
+      setEngagementLevel((member as any).engagementLevel ?? "unknown");
+      setShopFloorLeader((member as any).shopFloorLeader ?? false);
+      setOrganizingNotes((member as any).organizingNotes ?? "");
     }
   }, [member, editOpen]);
 
@@ -436,6 +443,9 @@ export default function MemberDetail() {
         cardSigned,
         accommodationActive,
         stewardNotes: stewardNotes || null,
+        engagementLevel: engagementLevel || "unknown",
+        shopFloorLeader,
+        organizingNotes: organizingNotes || null,
       } as any,
     });
   };
@@ -639,6 +649,36 @@ export default function MemberDetail() {
               🔒 Steward Notes (Private)
             </p>
             <p className="text-sm whitespace-pre-wrap text-foreground">{(member as any)?.stewardNotes}</p>
+          </div>
+        )}
+
+        {/* Organizing (steward-only) */}
+        {(!isAdmin || activeTab === "overview") && can("members.edit") && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              🌿 Organizing (Private)
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground font-medium">Engagement</span>
+              <span className={cn(
+                "text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                (({
+                  unknown: "bg-muted text-muted-foreground border-border",
+                  cold:    "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+                  warm:    "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300",
+                  active:  "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300",
+                  leader:  "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300",
+                } as Record<string, string>)[((member as any)?.engagementLevel ?? "unknown") as string] ?? "bg-muted text-muted-foreground border-border")
+              )}>
+                {(member as any)?.engagementLevel ?? "unknown"}
+              </span>
+            </div>
+            {(member as any)?.shopFloorLeader && (
+              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">⭐ Shop Floor Leader</p>
+            )}
+            {(member as any)?.organizingNotes && (
+              <p className="text-sm whitespace-pre-wrap text-foreground pt-1">{(member as any)?.organizingNotes}</p>
+            )}
           </div>
         )}
 
@@ -1416,6 +1456,52 @@ export default function MemberDetail() {
                   placeholder="Private notes visible only to stewards and above..."
                   className="min-h-[80px] rounded-xl bg-card resize-none"
                 />
+              </div>
+            )}
+
+            {can("members.edit") && (
+              <div className="space-y-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                  🌿 Organizing (Private)
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Engagement Level
+                  </label>
+                  <Select value={engagementLevel} onValueChange={setEngagementLevel}>
+                    <SelectTrigger className="h-10 rounded-xl bg-card">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">Unknown</SelectItem>
+                      <SelectItem value="cold">Cold</SelectItem>
+                      <SelectItem value="warm">Warm</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="leader">Leader</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between h-10 px-1">
+                  <div>
+                    <p className="text-sm font-semibold">Shop Floor Leader</p>
+                    <p className="text-xs text-muted-foreground">Informal organizer on the floor</p>
+                  </div>
+                  <Switch
+                    checked={shopFloorLeader}
+                    onCheckedChange={setShopFloorLeader}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Organizing Notes <span className="text-emerald-600">(Private)</span>
+                  </label>
+                  <Textarea
+                    value={organizingNotes}
+                    onChange={(e) => setOrganizingNotes(e.target.value)}
+                    placeholder="Organizing context, conversations, concerns…"
+                    className="min-h-[80px] rounded-xl bg-card resize-none"
+                  />
+                </div>
               </div>
             )}
 

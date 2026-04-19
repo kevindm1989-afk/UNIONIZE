@@ -38,6 +38,8 @@ const baseUpdateFields = {
   pushEnabled:        z.boolean().optional(),
 };
 
+const ENGAGEMENT_LEVELS = ["unknown", "cold", "warm", "active", "leader"] as const;
+
 /** Additional fields only admin / steward / chair roles may apply */
 const privilegedUpdateFields = {
   isActive:            z.boolean().optional(),
@@ -49,6 +51,9 @@ const privilegedUpdateFields = {
   accommodationActive: z.boolean().optional(),
   stewardNotes:        z.string().max(10000).nullable().optional(),
   cardSigned:          z.boolean().optional(),
+  engagementLevel:     z.enum(ENGAGEMENT_LEVELS).nullable().optional(),
+  shopFloorLeader:     z.boolean().optional(),
+  organizingNotes:     z.string().max(10000).nullable().optional(),
 };
 
 const PatchMemberBodySchema = z.object({
@@ -247,6 +252,9 @@ router.patch("/:id", requirePermission("members.edit"), asyncHandler(async (req,
   if (d.accommodationActive !== undefined) updates.accommodationActive = d.accommodationActive;
   if (d.stewardNotes !== undefined)       updates.stewardNotes = d.stewardNotes;
   if (d.cardSigned !== undefined)         (updates as any).cardSigned = d.cardSigned;
+  if (d.engagementLevel !== undefined)    updates.engagementLevel = d.engagementLevel;
+  if (d.shopFloorLeader !== undefined)    updates.shopFloorLeader = d.shopFloorLeader;
+  if (d.organizingNotes !== undefined)    updates.organizingNotes = d.organizingNotes;
 
   const [existing] = await db.select().from(membersTable).where(eq(membersTable.id, paramParsed.data.id));
 
