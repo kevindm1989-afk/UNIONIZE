@@ -43,13 +43,6 @@ router.patch("/", asyncHandler(async (req, res) => {
   const userId = req.session?.userId;
   const body = req.body as Record<string, boolean | null | undefined>;
 
-  const fields: (keyof typeof body)[] = ["cardSigned", "duesExplained", "cbaProvided", "stewardIntroduced", "rightsExplained", "benefitsExplained"];
-  const updates: Record<string, unknown> = {};
-  for (const f of fields) {
-    if (body[f] !== undefined) updates[f === "cardSigned" ? "card_signed" : f.replace(/([A-Z])/g, "_$1").toLowerCase()] = Boolean(body[f]);
-  }
-
-  // Map camelCase to snake_case properly
   const dbUpdates: Record<string, unknown> = {};
   if (body.cardSigned !== undefined) dbUpdates.cardSigned = Boolean(body.cardSigned);
   if (body.duesExplained !== undefined) dbUpdates.duesExplained = Boolean(body.duesExplained);
