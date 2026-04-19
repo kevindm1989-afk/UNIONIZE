@@ -202,6 +202,15 @@ Steward-only AI-powered tool at `/seniority-disputes`. Analyzes whether correct 
 - GrievanceCreate handles `_fromSeniority` identically to `_fromDetector` (pre-fills AI intake form)
 - Navigation: user menu dropdown → "Seniority Disputes" (Gavel icon)
 
+## Deployment
+
+**All deployments go through GitHub Actions → Fly.io. Do NOT use Replit's publish/deploy button.**
+
+- Push to `main` triggers `.github/workflows/fly-deploy.yml` automatically
+- Fly.io app: `union-local-1285`, region: `ord`
+- Requires `FLY_API_TOKEN` set as a GitHub Actions secret
+- The Dockerfile builds both the API server and PWA into a single production image on port 8080
+
 ## Required Secrets
 
 | Secret | Notes |
