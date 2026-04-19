@@ -1,0 +1,236 @@
+Run flyctl deploy --remote-only
+==> Verifying app config
+--> Verified app config
+Validating /home/runner/work/UNIONIZE/UNIONIZE/fly.toml
+✓ Configuration is valid
+==> Building image
+Waiting for depot builder...
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.08kB 0.1s done
+#1 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 0.4s
+#3 [internal] load .dockerignore
+#3 transferring context: 426B 0.1s done
+#3 DONE 0.1s
+#4 [builder  1/21] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#4 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 done
+#4 DONE 0.0s
+#5 [internal] load build context
+#5 transferring context: 11.50MB 0.6s done
+#5 ...
+#6 [builder  3/21] RUN npm install -g pnpm@10
+#6 CACHED
+#7 [builder  7/21] COPY lib/api-client-react/package.json ./lib/api-client-react/
+#7 CACHED
+#8 [builder  2/21] WORKDIR /app
+#8 CACHED
+#9 [builder 11/21] COPY lib/integrations-gemini-ai/package.json ./lib/integrations-gemini-ai/
+#9 CACHED
+#10 [builder 18/21] COPY . .
+#10 CACHED
+#11 [builder 12/21] COPY artifacts/api-server/package.json ./artifacts/api-server/
+#11 CACHED
+#12 [builder  6/21] COPY lib/api-spec/package.json ./lib/api-spec/
+#12 CACHED
+#13 [builder 14/21] COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
+#13 CACHED
+#14 [builder  4/21] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+#14 CACHED
+#15 [builder  8/21] COPY lib/api-zod/package.json ./lib/api-zod/
+#15 CACHED
+#16 [builder 17/21] RUN npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm add -D     @rollup/rollup-linux-x64-musl     lightningcss-linux-x64-musl     @tailwindcss/oxide-linux-x64-musl     --ignore-workspace-root-check
+#16 CACHED
+#17 [builder 16/21] RUN pnpm install --frozen-lockfile
+#17 CACHED
+#18 [builder 19/21] RUN pnpm --filter @workspace/api-spec run codegen
+#18 CACHED
+#19 [builder 15/21] COPY scripts/package.json ./scripts/
+#19 CACHED
+#20 [builder 13/21] COPY artifacts/pwa-app/package.json ./artifacts/pwa-app/
+#20 CACHED
+#21 [builder  9/21] COPY lib/object-storage-web/package.json ./lib/object-storage-web/
+#21 CACHED
+#22 [builder  5/21] COPY lib/db/package.json ./lib/db/
+#22 CACHED
+#23 [builder 10/21] COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
+#23 CACHED
+#24 [builder 20/21] RUN pnpm --filter @workspace/api-server run build
+#24 CACHED
+#5 [internal] load build context
+#5 ...
+#25 [builder 21/21] RUN pnpm --filter @workspace/pwa-app run build
+#25 1.127 
+#25 1.127 > @workspace/pwa-app@0.0.0 build /app/artifacts/pwa-app
+#25 1.127 > vite build --config vite.config.ts
+#25 1.127 
+#25 1.973 vite v7.3.2 building client environment for production...
+#25 2.112 transforming...
+#25 3.333 src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 3.794 src/components/ui/sheet.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 3.798 src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 4.553 src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 10.89 ✓ 2810 modules transformed.
+#25 11.40 rendering chunks...
+#25 11.97 computing gzip size...
+#25 12.02 dist/public/registerSW.js                        0.13 kB
+#25 12.02 dist/public/manifest.webmanifest                 0.43 kB
+#25 12.02 dist/public/index.html                           1.69 kB │ gzip:   0.64 kB
+#25 12.02 dist/public/assets/index-DgDAwLvI.css          147.93 kB │ gzip:  23.05 kB
+#25 12.02 dist/public/assets/vendor-query-0FYzBrcc.js     35.30 kB │ gzip:  10.44 kB
+#25 12.02 dist/public/assets/vendor-ui-DSC7AWwo.js        94.73 kB │ gzip:  29.36 kB
+#25 12.02 dist/public/assets/vendor-react-Kft8tf5M.js    211.02 kB │ gzip:  67.95 kB
+#25 12.03 dist/public/assets/index-ixDY-y02.js         1,157.43 kB │ gzip: 282.33 kB
+#25 12.03 
+#25 12.03 (!) Some chunks are larger than 500 kB after minification. Consider:
+#25 12.03 - Using dynamic import() to code-split the application
+#25 12.03 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#25 12.03 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#25 12.03 ✓ built in 9.98s
+#25 13.43 error during build:
+#25 13.43 Error: Unable to generate service worker from template. 'assignWith is not defined'
+#25 13.43     at populateSWTemplate (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/lib/populate-sw-template.js:76:15)
+#25 13.43     at writeSWUsingDefaultTemplate (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/lib/write-sw-using-default-template.js:28:73)
+#25 13.43     at async generateSW (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/generate-sw.js:95:23)
+#25 13.43     at async generateServiceWorker (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:208:23)
+#25 13.43     at async _generateSW (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:234:5)
+#25 13.43     at async Object.handler (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:427:13)
+#25 13.43     at async PluginDriver.hookParallel (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:22871:17)
+#25 13.43     at async Object.close (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:23890:13)
+#25 13.43     at async buildEnvironment (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33559:15)
+#25 13.43     at async Object.build (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33904:19)
+#25 13.58 /app/artifacts/pwa-app:
+#25 13.58  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/pwa-app@0.0.0 build: `vite build --config vite.config.ts`
+#25 13.58 Exit status 1
+#25 ERROR: process "/bin/sh -c pnpm --filter @workspace/pwa-app run build" did not complete successfully: exit code: 1
+#5 [internal] load build context
+------
+ > [builder 21/21] RUN pnpm --filter @workspace/pwa-app run build:
+13.43     at async generateServiceWorker (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:208:23)
+13.43     at async _generateSW (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:234:5)
+13.43     at async Object.handler (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:427:13)
+13.43     at async PluginDriver.hookParallel (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:22871:17)
+13.43     at async Object.close (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:23890:13)
+13.43     at async buildEnvironment (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33559:15)
+13.43     at async Object.build (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33904:19)
+13.58 /app/artifacts/pwa-app:
+13.58  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/pwa-app@0.0.0 build: `vite build --config vite.config.ts`
+13.58 Exit status 1
+------
+==> Building image
+Waiting for depot builder...
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.08kB 0.1s done
+#1 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 0.3s
+#3 [internal] load .dockerignore
+#3 transferring context: 426B 0.1s done
+#3 DONE 0.1s
+#4 [runner 1/5] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#4 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 done
+#4 DONE 0.0s
+#5 [internal] load build context
+#5 transferring context: 37.85kB 0.1s done
+#5 DONE 0.1s
+#6 [builder 10/21] COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
+#6 CACHED
+#7 [builder 19/21] RUN pnpm --filter @workspace/api-spec run codegen
+#7 CACHED
+#8 [builder 13/21] COPY artifacts/pwa-app/package.json ./artifacts/pwa-app/
+#8 CACHED
+#9 [runner 2/5] WORKDIR /app
+#9 CACHED
+#10 [builder  4/21] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+#10 CACHED
+#11 [builder 17/21] RUN npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm add -D     @rollup/rollup-linux-x64-musl     lightningcss-linux-x64-musl     @tailwindcss/oxide-linux-x64-musl     --ignore-workspace-root-check
+#11 CACHED
+#12 [builder 18/21] COPY . .
+#12 CACHED
+#13 [builder 16/21] RUN pnpm install --frozen-lockfile
+#13 CACHED
+#14 [builder  5/21] COPY lib/db/package.json ./lib/db/
+#14 CACHED
+#15 [builder 12/21] COPY artifacts/api-server/package.json ./artifacts/api-server/
+#15 CACHED
+#16 [builder  8/21] COPY lib/api-zod/package.json ./lib/api-zod/
+#16 CACHED
+#17 [builder 15/21] COPY scripts/package.json ./scripts/
+#17 CACHED
+#18 [builder  9/21] COPY lib/object-storage-web/package.json ./lib/object-storage-web/
+#18 CACHED
+#19 [builder 14/21] COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
+#19 CACHED
+#20 [builder  3/21] RUN npm install -g pnpm@10
+#20 CACHED
+#21 [builder  6/21] COPY lib/api-spec/package.json ./lib/api-spec/
+#21 CACHED
+#22 [builder  7/21] COPY lib/api-client-react/package.json ./lib/api-client-react/
+#22 CACHED
+#23 [builder 11/21] COPY lib/integrations-gemini-ai/package.json ./lib/integrations-gemini-ai/
+#23 CACHED
+#24 [builder 20/21] RUN pnpm --filter @workspace/api-server run build
+#24 CACHED
+#25 [builder 21/21] RUN pnpm --filter @workspace/pwa-app run build
+#25 0.793 
+#25 0.793 > @workspace/pwa-app@0.0.0 build /app/artifacts/pwa-app
+#25 0.793 > vite build --config vite.config.ts
+#25 0.793 
+#25 1.352 vite v7.3.2 building client environment for production...
+#25 1.475 transforming...
+#25 2.411 src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 3.399 src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 3.400 src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 3.414 src/components/ui/sheet.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#25 8.974 ✓ 2810 modules transformed.
+#25 9.444 rendering chunks...
+#25 9.916 computing gzip size...
+#25 9.972 dist/public/registerSW.js                        0.13 kB
+#25 9.972 dist/public/manifest.webmanifest                 0.43 kB
+#25 9.972 dist/public/index.html                           1.69 kB │ gzip:   0.64 kB
+#25 9.972 dist/public/assets/index-DgDAwLvI.css          147.93 kB │ gzip:  23.05 kB
+#25 9.972 dist/public/assets/vendor-query-0FYzBrcc.js     35.30 kB │ gzip:  10.44 kB
+#25 9.972 dist/public/assets/vendor-ui-DSC7AWwo.js        94.73 kB │ gzip:  29.36 kB
+#25 9.972 dist/public/assets/vendor-react-Kft8tf5M.js    211.02 kB │ gzip:  67.95 kB
+#25 9.972 dist/public/assets/index-ixDY-y02.js         1,157.43 kB │ gzip: 282.33 kB
+#25 9.972 
+#25 9.972 (!) Some chunks are larger than 500 kB after minification. Consider:
+#25 9.972 - Using dynamic import() to code-split the application
+#25 9.972 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#25 9.972 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#25 9.972 ✓ built in 8.56s
+#25 10.85 error during build:
+#25 10.85 Error: Unable to generate service worker from template. 'assignWith is not defined'
+#25 10.85     at populateSWTemplate (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/lib/populate-sw-template.js:76:15)
+#25 10.85     at writeSWUsingDefaultTemplate (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/lib/write-sw-using-default-template.js:28:73)
+#25 10.85     at async generateSW (/app/node_modules/.pnpm/workbox-build@7.4.0_@types+babel__core@7.20.5/node_modules/workbox-build/build/generate-sw.js:95:23)
+#25 10.85     at async generateServiceWorker (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:208:23)
+#25 10.85     at async _generateSW (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:234:5)
+#25 10.85     at async Object.handler (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:427:13)
+#25 10.85     at async PluginDriver.hookParallel (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:22871:17)
+#25 10.85     at async Object.close (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:23890:13)
+#25 10.85     at async buildEnvironment (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33559:15)
+#25 10.85     at async Object.build (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33904:19)
+#25 10.95 /app/artifacts/pwa-app:
+#25 10.95  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/pwa-app@0.0.0 build: `vite build --config vite.config.ts`
+#25 10.95 Exit status 1
+#25 ERROR: process "/bin/sh -c pnpm --filter @workspace/pwa-app run build" did not complete successfully: exit code: 1
+------
+ > [builder 21/21] RUN pnpm --filter @workspace/pwa-app run build:
+10.85     at async generateServiceWorker (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:208:23)
+10.85     at async _generateSW (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:234:5)
+10.85     at async Object.handler (file:///app/node_modules/.pnpm/vite-plugin-pwa@1.2.0_@types+babel__core@7.20.5_vite@7.3.2_@types+node@25.3.5_jiti@2.6._f3aed3ffea3bd8f4c80f3ca646b3866f/node_modules/vite-plugin-pwa/dist/index.js:427:13)
+10.85     at async PluginDriver.hookParallel (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:22871:17)
+10.85     at async Object.close (file:///app/node_modules/.pnpm/rollup@4.60.1/node_modules/rollup/dist/es/shared/node-entry.js:23890:13)
+10.85     at async buildEnvironment (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33559:15)
+10.85     at async Object.build (file:///app/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33904:19)
+10.95 /app/artifacts/pwa-app:
+10.95  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/pwa-app@0.0.0 build: `vite build --config vite.config.ts`
+10.95 Exit status 1
+------
+Error: failed to fetch an image or build from source: error building: failed to solve: process "/bin/sh -c pnpm --filter @workspace/pwa-app run build" did not complete successfully: exit code: 1
+Error: Process completed with exit code 1.
