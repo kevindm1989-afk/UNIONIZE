@@ -23,7 +23,7 @@ export default defineConfig({
       manifest: {
         name: "Unionize",
         short_name: "Unionize",
-        description: "Unionize — Member & Steward Portal for Unifor Local 1285",
+        description: "Unionize — Member & Steward Portal",
         theme_color: "#1a3a5c",
         background_color: "#1a3a5c",
         display: "standalone",

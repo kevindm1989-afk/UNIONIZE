@@ -391,7 +391,7 @@ export default function BargainingAssistant() {
 
           {reportData.nationalPatternIssues?.length > 0 && (
             <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 rounded-xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 mb-2">Escalate to Unifor National</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 mb-2">Escalate to National Union</p>
               <div className="space-y-1.5">
                 {reportData.nationalPatternIssues.map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -471,7 +471,7 @@ export default function BargainingAssistant() {
 
           {/* Print header */}
           <div className="hidden print:block mb-6">
-            <h1 className="text-2xl font-black">Unifor Local 1285</h1>
+            <h1 className="text-2xl font-black">Bargaining Prep Report</h1>
             <h2 className="text-xl font-bold mt-1">{reportTitle}</h2>
             <p className="text-sm text-gray-600 mt-1">Generated {format(new Date(), "MMMM d, yyyy")}</p>
           </div>
@@ -534,7 +534,7 @@ export default function BargainingAssistant() {
           {/* National pattern issues */}
           {report.nationalPatternIssues?.length > 0 && (
             <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 rounded-xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 mb-2">Escalate to Unifor National</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 mb-2">Escalate to National Union</p>
               <div className="space-y-1.5">
                 {report.nationalPatternIssues.map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -548,7 +548,7 @@ export default function BargainingAssistant() {
 
           <div className="text-center py-3">
             <p className="text-xs text-muted-foreground italic">
-              Proposed language must be reviewed by your Unifor National Representative before tabling at the bargaining table.
+              Proposed language must be reviewed by your National Union Representative before tabling at the bargaining table.
             </p>
           </div>
         </div>
@@ -687,7 +687,7 @@ function DisclaimerBanner() {
     <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3.5 py-3">
       <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
       <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-        <strong>Disclaimer:</strong> Proposed language must be reviewed by your Unifor National Representative before tabling at the bargaining table.
+        <strong>Disclaimer:</strong> Proposed language must be reviewed by your National Union Representative before tabling at the bargaining table.
       </p>
     </div>
   );

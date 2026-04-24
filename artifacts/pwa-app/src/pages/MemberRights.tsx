@@ -168,7 +168,7 @@ export default function MemberRights() {
             </div>
             <div>
               <h1 className="font-extrabold text-sm tracking-tight leading-none">Member Rights</h1>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Powered by AI · Unifor 1285</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Powered by AI</p>
             </div>
           </div>
           {history.length > 0 && (

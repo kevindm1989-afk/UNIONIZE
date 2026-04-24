@@ -183,7 +183,7 @@ export default function MemberPortalRights() {
                   Know Your Rights
                 </h1>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Powered by AI · Unifor Local 1285
+                  Powered by AI
                 </p>
               </div>
             </div>

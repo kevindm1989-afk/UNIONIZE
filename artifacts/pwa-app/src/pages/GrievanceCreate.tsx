@@ -491,7 +491,7 @@ export default function GrievanceCreate() {
               </div>
               <div>
                 <SheetTitle className="text-base">AI Grievance Drafting Assistant</SheetTitle>
-                <p className="text-xs text-muted-foreground">Powered by Gemini · Unifor Local 1285</p>
+                <p className="text-xs text-muted-foreground">Powered by Gemini</p>
               </div>
             </div>
             {aiPhase === "preview" && (

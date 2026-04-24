@@ -169,7 +169,7 @@ export function ArbitrationReferralPanel({
                     Ready to prepare arbitration referral
                   </p>
                   <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-0.5">
-                    AI will assemble the complete grievance file and draft a professional cover summary for Unifor National.
+                    AI will assemble the complete grievance file and draft a professional cover summary for the National Union.
                   </p>
                 </div>
               ) : pkg ? (
@@ -222,7 +222,7 @@ export function ArbitrationReferralPanel({
 
               {/* ── Print header (hidden on screen) ── */}
               <div className="hidden print:block text-center border-b-2 border-gray-800 pb-6 mb-6">
-                <p className="text-xs uppercase tracking-widest text-gray-600 mb-1">Unifor Local 1285</p>
+                <p className="text-xs uppercase tracking-widest text-gray-600 mb-1">Union Local</p>
                 <h1 className="text-2xl font-bold uppercase tracking-wide">Arbitration Referral Package</h1>
                 <p className="text-base font-semibold mt-1">Grievance {grievanceNumber}</p>
                 <p className="text-xs text-gray-500 mt-2">
@@ -441,7 +441,7 @@ export function ArbitrationReferralPanel({
               {/* ── Print footer ── */}
               <div className="hidden print:block text-center border-t border-gray-400 pt-4 mt-8">
                 <p className="text-xs text-gray-600 italic">
-                  Prepared by Unifor Local 1285 — For review by Unifor National Representative
+                  Prepared by the Union Local — For review by the National Union Representative
                 </p>
               </div>
             </div>

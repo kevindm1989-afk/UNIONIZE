@@ -502,7 +502,7 @@ router.get("/:id/certificate", asyncHandler(async (req, res) => {
     const total = tally.reduce((s: number, r: any) => s + r.count, 0);
 
     res.json({
-      organization: "Unifor Local 1285",
+      organization: "Your Union Local",
       voteId: poll.id,
       title: poll.title,
       description: poll.description,

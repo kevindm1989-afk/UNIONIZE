@@ -485,7 +485,7 @@ function CertificateSheet({ electionId, onClose }: { electionId: number; onClose
               <div className="footer text-center mt-6 pt-4 border-t border-border space-y-0.5">
                 <p className="text-[10px] text-muted-foreground">Conducted by: <strong>{cert.createdBy}</strong> · {cert.organization}</p>
                 <p className="text-[10px] text-muted-foreground">Certificate generated: {format(parseISO(cert.certificateGeneratedAt), "MMM d, yyyy 'at' h:mm a")}</p>
-                <p className="text-[10px] text-muted-foreground italic mt-1">This certificate constitutes the official record of this vote as conducted under Unifor Local 1285 bylaws.</p>
+                <p className="text-[10px] text-muted-foreground italic mt-1">This certificate constitutes the official record of this vote as conducted under the union's bylaws.</p>
               </div>
             </div>
 
@@ -590,7 +590,7 @@ function CreateElectionSheet({ onClose }: { onClose: () => void }) {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={isOfficerElection ? "e.g. President, Unifor Local 1285" : "e.g. Ratification of Proposed CBA 2025–2028"}
+              placeholder={isOfficerElection ? "e.g. President, Your Local" : "e.g. Ratification of Proposed CBA 2025–2028"}
               className="h-12 rounded-xl bg-card"
             />
           </div>

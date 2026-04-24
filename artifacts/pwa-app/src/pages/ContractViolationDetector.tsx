@@ -293,7 +293,7 @@ export default function ContractViolationDetector() {
             </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-semibold text-foreground">Analyzing against the CBA…</p>
-              <p className="text-xs text-muted-foreground">Reviewing articles, Ontario ESA, and Unifor policy</p>
+              <p className="text-xs text-muted-foreground">Reviewing articles, Ontario ESA, and union policy</p>
             </div>
           </div>
         )}
@@ -367,7 +367,7 @@ export default function ContractViolationDetector() {
               <p className="text-sm text-foreground/80 leading-relaxed">{result.nextStepsRationale}</p>
             </div>
 
-            {/* ESA / Unifor Policy */}
+            {/* ESA / Union Policy */}
             {(result.esaImplicated || result.uniforPolicyImplicated) && (
               <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -384,7 +384,7 @@ export default function ContractViolationDetector() {
                 {result.uniforPolicyImplicated && result.uniforPolicyDetails && (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">
-                      Unifor National Policy
+                      National Union Policy
                     </p>
                     <p className="text-sm text-foreground/80 leading-relaxed">{result.uniforPolicyDetails}</p>
                   </div>

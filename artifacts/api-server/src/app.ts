@@ -56,7 +56,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
   : [
       "https://union-local-1285.fly.dev",
-      "https://unifor1285.replit.app",
     ];
 
 app.use(

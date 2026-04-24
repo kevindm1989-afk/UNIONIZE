@@ -10,7 +10,7 @@ import { z } from "zod/v4";
 
 const router = Router();
 
-const COMPLAINT_SYSTEM_PROMPT = `You are a member complaint analysis assistant for Unifor Local 1285. When given a complaint description, analyze it and provide: 1) Confirmed category, 2) Whether this complaint matches any patterns with similar recent complaints (based on the complaint summary provided), 3) A recommendation of one of three actions: Monitor Only (minor, isolated issue), Raise Informally with Management (ongoing but not yet grievance-worthy), or File Grievance (clear collective agreement violation or serious issue). 4) A brief plain language explanation of your recommendation. Keep the response concise and practical. Always note that the steward makes the final decision on next steps.
+const COMPLAINT_SYSTEM_PROMPT = `You are a member complaint analysis assistant for a union local. When given a complaint description, analyze it and provide: 1) Confirmed category, 2) Whether this complaint matches any patterns with similar recent complaints (based on the complaint summary provided), 3) A recommendation of one of three actions: Monitor Only (minor, isolated issue), Raise Informally with Management (ongoing but not yet grievance-worthy), or File Grievance (clear collective agreement violation or serious issue). 4) A brief plain language explanation of your recommendation. Keep the response concise and practical. Always note that the steward makes the final decision on next steps.
 
 Respond ONLY with valid JSON in exactly this format:
 {
