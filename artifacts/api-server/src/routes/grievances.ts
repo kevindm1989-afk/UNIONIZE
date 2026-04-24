@@ -199,7 +199,7 @@ The full formal grievance text. Plain text only. Label each section: STATEMENT O
   });
 }));
 
-const VIOLATION_DETECTOR_SYSTEM_PROMPT = `You are a contract violation analysis assistant for Unifor Local 1285 operating under Ontario labor law and the Unifor collective agreement. When given a description of a workplace situation, analyze it against the collective agreement and identify: 1) Which specific articles may have been violated, 2) The severity of the violation (Minor, Moderate, Serious, Critical), 3) A plain language explanation of why each article applies, 4) Recommended next steps (Informal Resolution, File Grievance, or Escalate Immediately), 5) Whether Ontario ESA or Unifor national policy is also implicated. Be precise and cite specific article numbers. Always clarify this is an analysis to assist the steward, not legal advice. Respond only with a JSON object — no markdown, no backticks.`;
+const VIOLATION_DETECTOR_SYSTEM_PROMPT = `You are a contract violation analysis assistant for a union local operating under Ontario labor law and the collective agreement. When given a description of a workplace situation, analyze it against the collective agreement and identify: 1) Which specific articles may have been violated, 2) The severity of the violation (Minor, Moderate, Serious, Critical), 3) A plain language explanation of why each article applies, 4) Recommended next steps (Informal Resolution, File Grievance, or Escalate Immediately), 5) Whether Ontario ESA or national union policy is also implicated. Be precise and cite specific article numbers. Always clarify this is an analysis to assist the steward, not legal advice. Respond only with a JSON object — no markdown, no backticks.`;
 
 router.post("/detect", requirePermission("grievances.view"), asyncHandler(async (req, res) => {
   const { whatHappened, date, affected, department } = req.body;
@@ -235,7 +235,7 @@ Respond with a JSON object using exactly these keys:
   "esaImplicated": true | false,
   "esaDetails": "Description of relevant Ontario ESA provisions, or null if not implicated",
   "uniforPolicyImplicated": true | false,
-  "uniforPolicyDetails": "Description of relevant Unifor national policy, or null if not implicated"
+  "uniforPolicyDetails": "Description of relevant national union policy, or null if not implicated"
 }`;
 
   const result = await ai.models.generateContent({
@@ -554,7 +554,7 @@ router.patch("/:id", requirePermission("grievances.file"), asyncHandler(async (r
 
 // ─── Arbitration Referral Package ─────────────────────────────────────────────
 
-const ARBITRATION_SYSTEM_PROMPT = `You are an arbitration referral assistant for Unifor Local 1285. When given a complete grievance file, generate a professional arbitration referral cover summary for Unifor National that includes: 1) A plain language summary of the grievance and why it is being referred to arbitration, 2) The union's position statement, 3) Key facts and timeline of events, 4) Collective agreement articles violated, 5) Remedy being sought, 6) Any procedural issues or deadline concerns the National rep should be aware of. Write in a professional, formal tone suitable for submission to Unifor National. Always end with: 'This referral package has been prepared by the Local steward and is submitted for review and action by the Unifor National Representative.'`;
+const ARBITRATION_SYSTEM_PROMPT = `You are an arbitration referral assistant for a union local. When given a complete grievance file, generate a professional arbitration referral cover summary for the National Union that includes: 1) A plain language summary of the grievance and why it is being referred to arbitration, 2) The union's position statement, 3) Key facts and timeline of events, 4) Collective agreement articles violated, 5) Remedy being sought, 6) Any procedural issues or deadline concerns the National rep should be aware of. Write in a professional, formal tone suitable for submission to the National Union. Always end with: 'This referral package has been prepared by the Local steward and is submitted for review and action by the National Union Representative.'`;
 
 router.get("/:id/referral-package", requireSteward, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
@@ -652,7 +652,7 @@ router.post("/:id/referral-package", requireSteward, asyncHandler(async (req, re
     ? `Name: ${member.name ?? "Unknown"}\nDepartment: ${member.department ?? "Not specified"}\nShift: ${member.shift ?? "Not specified"}\nEmployee ID: ${member.employeeId ?? "Not specified"}`
     : "No member linked";
 
-  const userPrompt = `Generate a professional arbitration referral cover summary for the following Unifor Local 1285 grievance.
+  const userPrompt = `Generate a professional arbitration referral cover summary for the following grievance.
 
 GRIEVANCE FILE:
 ===============

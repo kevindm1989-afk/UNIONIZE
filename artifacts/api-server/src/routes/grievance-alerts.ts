@@ -53,7 +53,7 @@ async function generateAiMessages(
     memberName: g.memberName ?? "the grievor",
   }));
 
-  const prompt = `You are an advisor to a union steward at Unifor Local 1285 (Ontario). The following grievances need urgent attention. For each, write a single plain-language paragraph (2-4 sentences) telling the steward exactly what action to take and why it is time-sensitive. Be specific about the step number and the consequence of inaction (e.g., loss of grievance rights). Never use jargon without explanation. Respond ONLY with a valid JSON array where each object has "id" (number) and "message" (string). No markdown, no code blocks.
+  const prompt = `You are an advisor to a union steward at a Canadian union local (Ontario). The following grievances need urgent attention. For each, write a single plain-language paragraph (2-4 sentences) telling the steward exactly what action to take and why it is time-sensitive. Be specific about the step number and the consequence of inaction (e.g., loss of grievance rights). Never use jargon without explanation. Respond ONLY with a valid JSON array where each object has "id" (number) and "message" (string). No markdown, no code blocks.
 
 Grievances:
 ${JSON.stringify(list, null, 2)}`;

@@ -38,7 +38,7 @@ const DISPUTE_TYPE_LABELS: Record<DisputeType, string> = {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a seniority dispute analysis assistant for Unifor Local 1285 operating under Ontario labor law. When given details of a seniority dispute including the members involved, their seniority rankings, the type of dispute, and what management did, analyze whether the correct seniority order was followed.
+const SYSTEM_PROMPT = `You are a seniority dispute analysis assistant for a union local operating under Ontario labor law. When given details of a seniority dispute including the members involved, their seniority rankings, the type of dispute, and what management did, analyze whether the correct seniority order was followed.
 
 Your response MUST be valid JSON with exactly this structure:
 {
