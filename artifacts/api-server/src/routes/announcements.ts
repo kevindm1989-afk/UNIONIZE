@@ -79,9 +79,11 @@ router.get("/", asyncHandler(async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const catFilter = category ? ` AND category = '${category.replace(/'/g, "''")}'` : "";
+    const params: string[] = [];
+    const catFilter = category ? ` AND category = $${params.push(category)}` : "";
     const result = await client.query(
-      `SELECT * FROM announcements WHERE ${whereClause}${catFilter} ORDER BY published_at DESC LIMIT 200`
+      `SELECT * FROM announcements WHERE ${whereClause}${catFilter} ORDER BY published_at DESC LIMIT 200`,
+      params
     );
     const rows = result.rows.map((r: any) => ({
       id: r.id,

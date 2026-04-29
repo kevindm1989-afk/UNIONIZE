@@ -453,7 +453,7 @@ router.post(
   "/:id/files",
   requirePermission("members.edit"),
   upload.single("file"),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const memberId = parseInt(req.params.id as string, 10);
     if (isNaN(memberId)) { res.status(400).json({ error: "Invalid ID" }); return; }
     if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
@@ -464,41 +464,36 @@ router.post(
     const category = (req.body.category as string) || "general";
     const description = (req.body.description as string) || null;
 
-    try {
-      const { objectPath } = await storageUpload(
-        req.file.buffer,
-        req.file.mimetype || "application/octet-stream",
-      );
+    const { objectPath } = await storageUpload(
+      req.file.buffer,
+      req.file.mimetype || "application/octet-stream",
+    );
 
-      const [saved] = await db
-        .insert(memberFilesTable)
-        .values({
-          memberId,
-          category,
-          filename: req.file.originalname,
-          objectPath,
-          contentType: req.file.mimetype || "application/octet-stream",
-          fileSize: req.file.size,
-          description,
-        })
-        .returning();
+    const [saved] = await db
+      .insert(memberFilesTable)
+      .values({
+        memberId,
+        category,
+        filename: req.file.originalname,
+        objectPath,
+        contentType: req.file.mimetype || "application/octet-stream",
+        fileSize: req.file.size,
+        description,
+      })
+      .returning();
 
-      res.status(201).json({
-        id: saved.id,
-        memberId: saved.memberId,
-        category: saved.category,
-        filename: saved.filename,
-        objectPath: saved.objectPath,
-        contentType: saved.contentType,
-        fileSize: saved.fileSize,
-        description: saved.description ?? null,
-        uploadedAt: saved.uploadedAt.toISOString(),
-      });
-    } catch (err) {
-      req.log.error({ err }, "Failed to upload member file");
-      res.status(500).json({ error: "Upload failed" });
-    }
-  },
+    res.status(201).json({
+      id: saved.id,
+      memberId: saved.memberId,
+      category: saved.category,
+      filename: saved.filename,
+      objectPath: saved.objectPath,
+      contentType: saved.contentType,
+      fileSize: saved.fileSize,
+      description: saved.description ?? null,
+      uploadedAt: saved.uploadedAt.toISOString(),
+    });
+  }),
 );
 
 router.delete("/:id/files/:fileId", requirePermission("members.edit"), asyncHandler(async (req, res) => {

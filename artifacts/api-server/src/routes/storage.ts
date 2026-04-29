@@ -16,7 +16,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 /**
  * POST /storage/uploads/request-url
  *
- * Legacy presigned-URL flow (Replit/GCS only). Kept for compatibility.
+ * Legacy presigned-URL flow (GCS only). Kept for compatibility.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
@@ -78,7 +78,7 @@ router.post("/storage/upload", requirePermission("documents.upload"), upload.sin
 /**
  * GET /storage/public-objects/*
  *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS (Replit/GCS only).
+ * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS (GCS only).
  */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
@@ -110,7 +110,7 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 /**
  * GET /storage/objects/*
  *
- * Serve uploaded object entities. Works on both Replit (GCS) and Fly.io (S3/Tigris).
+ * Serve uploaded object entities. Works with S3/Tigris (Fly.io) and GCS.
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
