@@ -35,7 +35,7 @@ export async function initVapid() {
   const keys = await getVapidKeys();
   if (keys) {
     webpush.setVapidDetails(
-      "mailto:admin@unionlocal.org",
+      `mailto:${process.env.VAPID_CONTACT_EMAIL ?? "admin@unionlocal.org"}`,
       keys.publicKey,
       keys.privateKey
     );

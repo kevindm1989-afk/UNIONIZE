@@ -16,6 +16,7 @@ primary_region = "ord"
   # SMTP_PASS — Gmail App Password (not your regular password)
   # VAPID_PUBLIC_KEY
   # VAPID_PRIVATE_KEY
+  # VAPID_CONTACT_EMAIL — mailto: address for VAPID (defaults to admin@unionlocal.org)
   # ALLOWED_ORIGINS — comma-separated list of allowed CORS origins
   #   e.g. https://union-local-1285.fly.dev,https://custom.domain.com
   #   Defaults to https://union-local-1285.fly.dev if not set
