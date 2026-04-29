@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { requireAdmin } from "../lib/permissions";
+import { asyncHandler } from "../lib/asyncHandler";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+router.get("/", asyncHandler(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const entityType = req.query.entityType as string | undefined;
@@ -49,9 +50,9 @@ router.get("/", async (req, res) => {
   } finally {
     client.release();
   }
-});
+}));
 
-router.delete("/", requireAdmin, async (_req, res) => {
+router.delete("/", requireAdmin, asyncHandler(async (_req, res) => {
   const client = await pool.connect();
   try {
     const { rows } = await client.query("SELECT count(*)::int AS n FROM audit_logs");
@@ -61,6 +62,6 @@ router.delete("/", requireAdmin, async (_req, res) => {
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

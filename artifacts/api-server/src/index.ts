@@ -8,23 +8,20 @@ const REQUIRED_ENV_VARS = [
 
 const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
 if (missing.length > 0) {
-  console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+  logger.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
   process.exit(1);
 }
 
 if (!process.env.GEMINI_API_KEY) {
-  console.warn(
-    'WARNING: GEMINI_API_KEY is not set. AI assistant features will be unavailable. ' +
-    'Set it via Replit Secrets (dev) or: flyctl secrets set GEMINI_API_KEY=... (prod)'
-  );
+  logger.warn('GEMINI_API_KEY is not set — AI assistant features will be unavailable. Set it with: flyctl secrets set GEMINI_API_KEY=...');
 }
 
-console.log('✅ All required environment variables are set');
+logger.info('All required environment variables are set');
 
 // Warn (but don't crash) if optional services are unconfigured
 const dbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.PG_URL;
 if (!dbUrl) {
-  console.error('FATAL: No database URL found. Set NEON_DATABASE_URL or DATABASE_URL.');
+  logger.error('FATAL: No database URL found. Set NEON_DATABASE_URL or DATABASE_URL.');
   process.exit(1);
 }
 

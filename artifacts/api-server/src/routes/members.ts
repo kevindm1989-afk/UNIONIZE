@@ -190,7 +190,7 @@ router.get("/:id", asyncHandler(async (req, res) => {
       .where(eq(membersTable.id, parsed.data.id));
     member = row;
   } catch (err) {
-    console.error(`[members] GET /${parsed.data.id} db error:`, err);
+    req.log.error({ err }, `members GET /${parsed.data.id} db error`);
     res.status(500).json({ error: "Failed to fetch member" });
     return;
   }
