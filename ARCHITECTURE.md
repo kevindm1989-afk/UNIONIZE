@@ -7,7 +7,7 @@ Mobile PWA for union stewards to manage member records, track grievances, post b
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
+- **Node.js version**: 20 (production Docker / Fly.io)
 - **API framework**: Express 5
 - **Database**: Neon cloud PostgreSQL (`NEON_DATABASE_URL`) via `drizzle-orm/neon-serverless`
 - **ORM**: Drizzle ORM
@@ -16,7 +16,7 @@ Mobile PWA for union stewards to manage member records, track grievances, post b
 - **Frontend**: React + Vite + shadcn/ui + TanStack Query + Wouter
 - **AI**: Google Gemini (`gemini-2.5-flash` for main, `gemini-2.5-flash-lite` for quick tasks)
 - **Push notifications**: Web Push API (VAPID keys in secrets)
-- **Email**: Resend (via Replit integration)
+- **Email**: Nodemailer (Gmail SMTP — `SMTP_USER` + `SMTP_PASS` env vars)
 
 ## Artifacts
 
@@ -204,7 +204,7 @@ Steward-only AI-powered tool at `/seniority-disputes`. Analyzes whether correct 
 
 ## Deployment
 
-**All deployments go through GitHub Actions → Fly.io. Do NOT use Replit's publish/deploy button.**
+**All deployments go through GitHub Actions → Fly.io.**
 
 - Push to `main` triggers `.github/workflows/fly-deploy.yml` automatically
 - Fly.io app: `union-local-1285`, region: `ord`
@@ -220,6 +220,9 @@ Steward-only AI-powered tool at `/seniority-disputes`. Analyzes whether correct 
 | `GEMINI_API_KEY` | Gemini AI for CBA assistant + grievance drafting |
 | `ANTHROPIC_API_KEY` | Optional — legacy; Gemini is primary AI |
 | `VAPID_PRIVATE_KEY` | Web Push notifications |
+| `SMTP_USER` | Gmail address for outbound email |
+| `SMTP_PASS` | Gmail App Password (16-char, from Google Account → Security → App passwords) |
+| `EMAIL_FROM` | Optional display name, e.g. `Local 1285 <you@gmail.com>` |
 
 ## Security Features
 
@@ -231,6 +234,6 @@ Steward-only AI-powered tool at `/seniority-disputes`. Analyzes whether correct 
 
 ## Email Notifications
 
-- Provider: Resend (via Replit integration)
+- Provider: Nodemailer (Gmail SMTP — set `SMTP_USER` and `SMTP_PASS` env vars)
 - Events: grievance filed, status changed, new access request
 - Admin email configured in Admin → Config (`local_settings.admin_email`)
