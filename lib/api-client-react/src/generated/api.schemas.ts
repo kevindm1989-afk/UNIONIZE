@@ -414,6 +414,7 @@ export interface AuthUser {
   isActive: boolean;
   linkedMemberId?: number | null;
   lastLoginAt?: string | null;
+  mustChangePassword: boolean;
   createdAt: string;
 }
 
@@ -425,6 +426,38 @@ export interface ApproveAccessRequestResponse {
 export interface RejectAccessRequestBody {
   /** @minLength 1 */
   rejectionReason: string;
+}
+
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export type SessionUserRole =
+  (typeof SessionUserRole)[keyof typeof SessionUserRole];
+
+export const SessionUserRole = {
+  admin: "admin",
+  chair: "chair",
+  steward: "steward",
+  co_chair: "co_chair",
+  member: "member",
+} as const;
+
+export interface SessionUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: SessionUserRole;
+  permissions: string[];
+  linkedMemberId?: number | null;
+  mustChangePassword: boolean;
+}
+
+export interface ChangePasswordBody {
+  currentPassword: string;
+  /** @minLength 12 */
+  newPassword: string;
 }
 
 export type CreateAuthUserBodyRole =

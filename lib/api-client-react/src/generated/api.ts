@@ -30,6 +30,7 @@ import type {
   AuthUser,
   BadRequestResponse,
   CbaInfo,
+  ChangePasswordBody,
   CommunicationLog,
   ConflictResponse,
   Coverage,
@@ -67,6 +68,7 @@ import type {
   ListAnnouncementsParams,
   ListGrievancesParams,
   ListMembersParams,
+  LoginBody,
   Meeting,
   Member,
   MemberPortalGrievance,
@@ -87,6 +89,7 @@ import type {
   RequestUploadUrlResponse,
   RolePermissions,
   SendAnthropicMessageBody,
+  SessionUser,
   Settings,
   StatsOverview,
   UnauthorizedResponse,
@@ -2845,6 +2848,347 @@ export const useSendAnthropicMessage = <
   TContext
 > => {
   return useMutation(getSendAnthropicMessageMutationOptions(options));
+};
+
+/**
+ * @summary Log in with username and password
+ */
+export const getPostApiAuthLoginUrl = () => {
+  return `/api/auth/login`;
+};
+
+export const postApiAuthLogin = async (
+  loginBody: LoginBody,
+  options?: RequestInit,
+): Promise<SessionUser> => {
+  return customFetch<SessionUser>(getPostApiAuthLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginBody),
+  });
+};
+
+export const getPostApiAuthLoginMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthLogin>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postApiAuthLogin>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  const mutationKey = ["postApiAuthLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postApiAuthLogin>>,
+    { data: BodyType<LoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postApiAuthLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostApiAuthLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postApiAuthLogin>>
+>;
+export type PostApiAuthLoginMutationBody = BodyType<LoginBody>;
+export type PostApiAuthLoginMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+>;
+
+/**
+ * @summary Log in with username and password
+ */
+export const usePostApiAuthLogin = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthLogin>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postApiAuthLogin>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  return useMutation(getPostApiAuthLoginMutationOptions(options));
+};
+
+/**
+ * @summary Destroy the current session
+ */
+export const getPostApiAuthLogoutUrl = () => {
+  return `/api/auth/logout`;
+};
+
+export const postApiAuthLogout = async (
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getPostApiAuthLogoutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPostApiAuthLogoutMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthLogout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postApiAuthLogout>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["postApiAuthLogout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postApiAuthLogout>>,
+    void
+  > = () => {
+    return postApiAuthLogout(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostApiAuthLogoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postApiAuthLogout>>
+>;
+
+export type PostApiAuthLogoutMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Destroy the current session
+ */
+export const usePostApiAuthLogout = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthLogout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postApiAuthLogout>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getPostApiAuthLogoutMutationOptions(options));
+};
+
+/**
+ * @summary Return the current session user
+ */
+export const getGetApiAuthMeUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getApiAuthMe = async (
+  options?: RequestInit,
+): Promise<SessionUser> => {
+  return customFetch<SessionUser>(getGetApiAuthMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetApiAuthMeQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetApiAuthMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApiAuthMe>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getApiAuthMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetApiAuthMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiAuthMe>>> = ({
+    signal,
+  }) => getApiAuthMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getApiAuthMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetApiAuthMeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiAuthMe>>
+>;
+export type GetApiAuthMeQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Return the current session user
+ */
+
+export function useGetApiAuthMe<
+  TData = Awaited<ReturnType<typeof getApiAuthMe>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getApiAuthMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetApiAuthMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Change own password (clears mustChangePassword flag)
+ */
+export const getPostApiAuthMeChangePasswordUrl = () => {
+  return `/api/auth/me/change-password`;
+};
+
+export const postApiAuthMeChangePassword = async (
+  changePasswordBody: ChangePasswordBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getPostApiAuthMeChangePasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(changePasswordBody),
+  });
+};
+
+export const getPostApiAuthMeChangePasswordMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthMeChangePassword>>,
+    TError,
+    { data: BodyType<ChangePasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postApiAuthMeChangePassword>>,
+  TError,
+  { data: BodyType<ChangePasswordBody> },
+  TContext
+> => {
+  const mutationKey = ["postApiAuthMeChangePassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postApiAuthMeChangePassword>>,
+    { data: BodyType<ChangePasswordBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postApiAuthMeChangePassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostApiAuthMeChangePasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postApiAuthMeChangePassword>>
+>;
+export type PostApiAuthMeChangePasswordMutationBody =
+  BodyType<ChangePasswordBody>;
+export type PostApiAuthMeChangePasswordMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+>;
+
+/**
+ * @summary Change own password (clears mustChangePassword flag)
+ */
+export const usePostApiAuthMeChangePassword = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | RateLimitedResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiAuthMeChangePassword>>,
+    TError,
+    { data: BodyType<ChangePasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postApiAuthMeChangePassword>>,
+  TError,
+  { data: BodyType<ChangePasswordBody> },
+  TContext
+> => {
+  return useMutation(getPostApiAuthMeChangePasswordMutationOptions(options));
 };
 
 /**

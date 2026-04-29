@@ -654,6 +654,86 @@ paths:
           content:
             text/event-stream: {}
 
+  # ── AUTH / SESSION ───────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      operationId: postApiAuthLogin
+      tags: [auth]
+      summary: Log in with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Authenticated — session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/logout:
+    post:
+      operationId: postApiAuthLogout
+      tags: [auth]
+      summary: Destroy the current session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /auth/me:
+    get:
+      operationId: getApiAuthMe
+      tags: [auth]
+      summary: Return the current session user
+      responses:
+        "200":
+          description: Authenticated session user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me/change-password:
+    post:
+      operationId: postApiAuthMeChangePassword
+      tags: [auth]
+      summary: Change own password (clears mustChangePassword flag)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   # ── AUTH / ACCESS REQUESTS ───────────────────────────────────────────────────
 
   /auth/request-access:
@@ -2647,6 +2727,48 @@ components:
 
     # ── AUTH / USERS ──────────────────────────────────────────────────────────
 
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    SessionUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, chair, steward, co_chair, member]
+        permissions:
+          type: array
+          items:
+            type: string
+        linkedMemberId:
+          type: integer
+          nullable: true
+        mustChangePassword:
+          type: boolean
+      required: [id, username, displayName, role, permissions, mustChangePassword]
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 12
+      required: [currentPassword, newPassword]
+
     AuthUser:
       type: object
       properties:
@@ -2668,10 +2790,12 @@ components:
           type: string
           format: date-time
           nullable: true
+        mustChangePassword:
+          type: boolean
         createdAt:
           type: string
           format: date-time
-      required: [id, username, displayName, role, isActive, createdAt]
+      required: [id, username, displayName, role, isActive, mustChangePassword, createdAt]
 
     CreateAuthUserBody:
       type: object

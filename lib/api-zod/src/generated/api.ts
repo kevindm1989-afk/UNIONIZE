@@ -678,6 +678,58 @@ export const SendAnthropicMessageBody = zod.object({
 });
 
 /**
+ * @summary Log in with username and password
+ */
+export const PostApiAuthLoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const PostApiAuthLoginResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "chair", "steward", "co_chair", "member"]),
+  permissions: zod.array(zod.string()),
+  linkedMemberId: zod.number().nullish(),
+  mustChangePassword: zod.boolean(),
+});
+
+/**
+ * @summary Destroy the current session
+ */
+export const PostApiAuthLogoutResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Return the current session user
+ */
+export const GetApiAuthMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "chair", "steward", "co_chair", "member"]),
+  permissions: zod.array(zod.string()),
+  linkedMemberId: zod.number().nullish(),
+  mustChangePassword: zod.boolean(),
+});
+
+/**
+ * @summary Change own password (clears mustChangePassword flag)
+ */
+export const postApiAuthMeChangePasswordBodyNewPasswordMin = 12;
+
+export const PostApiAuthMeChangePasswordBody = zod.object({
+  currentPassword: zod.string(),
+  newPassword: zod.string().min(postApiAuthMeChangePasswordBodyNewPasswordMin),
+});
+
+export const PostApiAuthMeChangePasswordResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Submit a new portal access request (public)
  */
 export const postApiAuthRequestAccessBodyFirstNameMax = 100;
@@ -813,6 +865,7 @@ export const PatchApiAccessRequestsIdApproveResponse = zod.object({
     isActive: zod.boolean(),
     linkedMemberId: zod.number().nullish(),
     lastLoginAt: zod.coerce.date().nullish(),
+    mustChangePassword: zod.boolean(),
     createdAt: zod.coerce.date(),
   }),
   tempPassword: zod.string(),
@@ -866,6 +919,7 @@ export const GetApiAuthUsersResponseItem = zod.object({
   isActive: zod.boolean(),
   linkedMemberId: zod.number().nullish(),
   lastLoginAt: zod.coerce.date().nullish(),
+  mustChangePassword: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 export const GetApiAuthUsersResponse = zod.array(GetApiAuthUsersResponseItem);
@@ -911,6 +965,7 @@ export const PatchApiAuthUsersIdResponse = zod.object({
   isActive: zod.boolean(),
   linkedMemberId: zod.number().nullish(),
   lastLoginAt: zod.coerce.date().nullish(),
+  mustChangePassword: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 

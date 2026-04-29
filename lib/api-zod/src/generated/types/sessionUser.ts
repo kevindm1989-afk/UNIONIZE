@@ -5,16 +5,14 @@
  * API specification for Union Steward App
  * OpenAPI spec version: 0.1.0
  */
-import type { AuthUserRole } from "./authUserRole";
+import type { SessionUserRole } from "./sessionUserRole";
 
-export interface AuthUser {
+export interface SessionUser {
   id: number;
   username: string;
   displayName: string;
-  role: AuthUserRole;
-  isActive: boolean;
+  role: SessionUserRole;
+  permissions: string[];
   linkedMemberId?: number | null;
-  lastLoginAt?: Date | null;
   mustChangePassword: boolean;
-  createdAt: Date;
 }
