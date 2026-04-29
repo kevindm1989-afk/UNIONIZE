@@ -4,7 +4,7 @@ import { db, usersTable, accessRequestsTable, rolePermissionsTable } from "@work
 import { eq } from "drizzle-orm";
 import { ALL_PERMISSIONS, loadUserPermissions } from "../lib/seedAdmin";
 import { asyncHandler } from "../lib/asyncHandler";
-import { loginLimiter } from "../lib/rateLimiters";
+import { loginLimiter, changePasswordLimiter } from "../lib/rateLimiters";
 import { z } from "zod/v4";
 
 const createUserSchema = z.object({
@@ -69,31 +69,40 @@ router.post("/auth/login", loginLimiter, async (req: Request, res: Response) => 
 
     const permissions = await loadUserPermissions(user.role);
 
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    req.session.displayName = user.displayName;
-    req.session.role = user.role;
-    req.session.permissions = permissions;
-    req.session.linkedMemberId = user.linkedMemberId ?? undefined;
-    req.session.mustChangePassword = user.mustChangePassword ?? false;
-
-    // Track last login time (fire-and-forget)
-    db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id)).catch(() => {});
-
-    req.session.save((err) => {
-      if (err) {
-        req.log.error({ err }, "Session save failed");
+    // Regenerate session ID before writing auth data to prevent session fixation.
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        req.log.error({ err: regenErr }, "Session regenerate failed");
         res.status(500).json({ error: "Failed to create session", code: "INTERNAL_ERROR" });
         return;
       }
-      res.json({
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        role: user.role,
-        permissions,
-        linkedMemberId: user.linkedMemberId ?? null,
-        mustChangePassword: user.mustChangePassword ?? false,
+
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      req.session.displayName = user.displayName;
+      req.session.role = user.role;
+      req.session.permissions = permissions;
+      req.session.linkedMemberId = user.linkedMemberId ?? undefined;
+      req.session.mustChangePassword = user.mustChangePassword ?? false;
+
+      // Track last login time (fire-and-forget)
+      db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id)).catch(() => {});
+
+      req.session.save((err) => {
+        if (err) {
+          req.log.error({ err }, "Session save failed");
+          res.status(500).json({ error: "Failed to create session", code: "INTERNAL_ERROR" });
+          return;
+        }
+        res.json({
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          role: user.role,
+          permissions,
+          linkedMemberId: user.linkedMemberId ?? null,
+          mustChangePassword: user.mustChangePassword ?? false,
+        });
       });
     });
   } catch (err) {
@@ -134,7 +143,7 @@ router.get("/auth/me", (req: Request, res: Response) => {
 /**
  * POST /auth/me/change-password — authenticated: change own password (clears mustChangePassword flag)
  */
-router.post("/auth/me/change-password", asyncHandler(async (req: Request, res: Response) => {
+router.post("/auth/me/change-password", changePasswordLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.session.userId) {
     res.status(401).json({ error: "Not authenticated", code: "UNAUTHORIZED" });
     return;

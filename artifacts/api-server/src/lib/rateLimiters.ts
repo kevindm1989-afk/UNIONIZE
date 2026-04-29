@@ -33,3 +33,12 @@ export const grievanceCreateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => String((req as any).session?.userId ?? ipKeyGenerator(req.ip ?? "")),
+  message: { error: "Too many password change attempts. Please try again in 15 minutes.", code: "RATE_LIMITED" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
