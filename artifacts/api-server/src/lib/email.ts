@@ -1,15 +1,21 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, localSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-async function getResendClient(): Promise<{ client: Resend; from: string } | null> {
-  if (process.env.RESEND_API_KEY) {
-    const from: string = process.env.EMAIL_FROM as string;
-    return { client: new Resend(process.env.RESEND_API_KEY), from };
+function getTransport(): { transport: nodemailer.Transporter; from: string } | null {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) {
+    logger.warn("Email not configured: set SMTP_USER and SMTP_PASS env vars");
+    return null;
   }
-  logger.warn("Email not configured: set RESEND_API_KEY and EMAIL_FROM env vars");
-  return null;
+  const from = process.env.EMAIL_FROM ?? user;
+  const transport = nodemailer.createTransport({
+    service: "gmail",
+    auth: { type: "login", user, pass },
+  });
+  return { transport, from };
 }
 
 async function send(opts: {
@@ -18,22 +24,18 @@ async function send(opts: {
   html: string;
   text: string;
 }): Promise<void> {
-  const resend = await getResendClient();
-  if (!resend) return;
+  const mailer = getTransport();
+  if (!mailer) return;
 
   try {
-    const { error } = await resend.client.emails.send({
-      from: resend.from,
+    await mailer.transport.sendMail({
+      from: mailer.from,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
     });
-    if (error) {
-      logger.error({ error }, "Resend API error sending email");
-    } else {
-      logger.info({ to: opts.to, subject: opts.subject }, "Email sent via Resend");
-    }
+    logger.info({ to: opts.to, subject: opts.subject }, "Email sent via Gmail SMTP");
   } catch (err) {
     logger.error({ err }, "Failed to send email — continuing without notification");
   }
