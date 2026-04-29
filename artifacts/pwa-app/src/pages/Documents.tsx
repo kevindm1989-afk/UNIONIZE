@@ -76,6 +76,7 @@ async function uploadFileToServer(
     formData.append("file", file);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/storage/upload");
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 90));
     };
@@ -235,7 +236,8 @@ export default function Documents() {
     setHistoryLoading(true);
     setHistoryOpen(true);
     try {
-      const res = await fetch(`/api/documents/group/${groupId}/versions`);
+      const res = await fetch(`/api/documents/group/${groupId}/versions`, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: VersionEntry[] = await res.json();
       setHistoryVersions(data);
     } catch {

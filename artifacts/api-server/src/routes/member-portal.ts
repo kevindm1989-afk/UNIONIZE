@@ -364,7 +364,7 @@ router.post("/sign-card", requireMemberAccess, asyncHandler(async (req: Request,
  * History is passed in-request and not persisted to the database.
  * Has its own try/catch for streaming error handling.
  */
-router.post("/ai/chat", requireMemberAccess, aiChatLimiter, async (req: Request, res: Response) => {
+router.post("/ai/chat", requireMemberAccess, aiChatLimiter, asyncHandler(async (req: Request, res: Response) => {
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ error: "Invalid request body", code: "VALIDATION_ERROR" });
@@ -408,7 +408,7 @@ router.post("/ai/chat", requireMemberAccess, aiChatLimiter, async (req: Request,
       res.end();
     }
   }
-});
+}));
 
 // ─── Member Rights Explainer ──────────────────────────────────────────────────
 

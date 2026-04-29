@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import helmet from "helmet";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -39,6 +40,12 @@ const app: Express = express();
 // express-session refuses to set Secure cookies even though the browser
 // is talking HTTPS, causing logins to silently fail in production.
 app.set("trust proxy", 1);
+app.use(
+  helmet({
+    // Allow same-origin framing for the PWA (service worker needs this)
+    contentSecurityPolicy: false,
+  }),
+);
 app.use(
   pinoHttp({
     logger,

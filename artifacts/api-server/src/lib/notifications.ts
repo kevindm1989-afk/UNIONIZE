@@ -48,7 +48,7 @@ export async function notifyUrgentBulletin(bulletin: {
     body: bulletin.content.slice(0, 100),
     tag: `bulletin-${bulletin.id}`,
     url: `/bulletins/${bulletin.id}`,
-  }).catch(() => {});
+  }).catch((err: unknown) => { logger.warn({ err }, "Push notification failed"); });
 
   // SMS members with sms_enabled = true
   try {
@@ -77,7 +77,7 @@ export async function notifyNewGrievancePush(grievance: {
     body: grievance.title,
     tag: `grievance-${grievance.id}`,
     url: `/grievances/${grievance.id}`,
-  }).catch(() => {});
+  }).catch((err: unknown) => { logger.warn({ err }, "Push notification failed"); });
 }
 
 export async function notifyMeetingReminder(meeting: {
@@ -93,5 +93,5 @@ export async function notifyMeetingReminder(meeting: {
     body: `${dateStr} — ${meeting.location ?? "Location TBD"}`,
     tag: `meeting-reminder-${meeting.id}`,
     url: `/meetings/${meeting.id}`,
-  }).catch(() => {});
+  }).catch((err: unknown) => { logger.warn({ err }, "Push notification failed"); });
 }

@@ -569,7 +569,7 @@ export default function Dashboard() {
         <section className="space-y-3 pb-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground">Latest Bulletins</h2>
-            <Link href="/bulletins" className="text-xs font-semibold text-primary flex items-center gap=0.5">
+            <Link href="/bulletins" className="text-xs font-semibold text-primary flex items-center gap-0.5">
               View all <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>

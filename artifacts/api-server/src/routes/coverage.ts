@@ -100,7 +100,9 @@ router.delete("/:id", asyncHandler(async (req, res) => {
   if (req.session?.role !== "admin" && req.session?.role !== "chair") {
     res.status(403).json({ error: "Admin only", code: "FORBIDDEN" }); return;
   }
-  await db.delete(stewardCoverageTable).where(eq(stewardCoverageTable.id, parseInt(req.params.id as string, 10)));
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(stewardCoverageTable).where(eq(stewardCoverageTable.id, id));
   res.status(204).end();
 }));
 

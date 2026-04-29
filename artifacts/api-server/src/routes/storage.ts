@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import multer from "multer";
 import { requirePermission } from "../lib/permissions";
+import { asyncHandler } from "../lib/asyncHandler";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -18,7 +19,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
  *
  * Legacy presigned-URL flow (GCS only). Kept for compatibility.
  */
-router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+router.post("/storage/uploads/request-url", asyncHandler(async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -42,7 +43,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
-});
+}));
 
 /**
  * POST /storage/upload
@@ -51,7 +52,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
  * The client sends the file as multipart/form-data; the server writes it to the
  * configured backend and returns { objectPath, filename, contentType, fileSize }.
  */
-router.post("/storage/upload", requirePermission("documents.upload"), upload.single("file"), async (req: Request, res: Response) => {
+router.post("/storage/upload", requirePermission("documents.upload"), upload.single("file"), asyncHandler(async (req: Request, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: "No file provided" });
     return;
@@ -73,17 +74,21 @@ router.post("/storage/upload", requirePermission("documents.upload"), upload.sin
     req.log.error({ err: error }, "Error uploading file to storage");
     res.status(500).json({ error: "Failed to upload file" });
   }
-});
+}));
 
 /**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS (GCS only).
  */
-router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
+router.get("/storage/public-objects/*filePath", asyncHandler(async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
+    if (filePath.includes("..") || filePath.includes("\0")) {
+      res.status(400).json({ error: "Invalid path" });
+      return;
+    }
     const file = await objectStorageService.searchPublicObject(filePath);
     if (!file) {
       res.status(404).json({ error: "File not found" });
@@ -105,14 +110,14 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
     req.log.error({ err: error }, "Error serving public object");
     res.status(500).json({ error: "Failed to serve public object" });
   }
-});
+}));
 
 /**
  * GET /storage/objects/*
  *
  * Serve uploaded object entities. Works with S3/Tigris (Fly.io) and GCS.
  */
-router.get("/storage/objects/*path", async (req: Request, res: Response) => {
+router.get("/storage/objects/*path", asyncHandler(async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
@@ -133,6 +138,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     req.log.error({ err: error }, "Error serving object");
     res.status(500).json({ error: "Failed to serve object" });
   }
-});
+}));
 
 export default router;

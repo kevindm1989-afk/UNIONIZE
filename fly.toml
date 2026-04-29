@@ -12,7 +12,8 @@ primary_region = "ord"
   # ADMIN_PASSWORD
   # PORTAL_URL
   # EMAIL_FROM
-  # RESEND_API_KEY — required for email delivery on Fly.io
+  # SMTP_USER — Gmail address for email delivery (e.g. yourname@gmail.com)
+  # SMTP_PASS — Gmail App Password (not your regular password)
   # VAPID_PUBLIC_KEY
   # VAPID_PRIVATE_KEY
   # ALLOWED_ORIGINS — comma-separated list of allowed CORS origins
@@ -46,4 +47,4 @@ primary_region = "ord"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512
+  memory_mb = 1024
